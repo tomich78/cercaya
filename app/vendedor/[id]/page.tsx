@@ -171,8 +171,8 @@ export default function SellerPage({ params }: { params: Promise<{ id: string }>
       buyerName:       u.name,
       buyerInitials:   u.initials,
       sellerId:        id,
-      sellerName:      seller.name,
-      sellerInitials:  seller.initials,
+      sellerName:      seller?.name ?? "Vendedor",
+      sellerInitials:  seller?.initials ?? "VV",
     });
     router.push(`/mensajes/${conv.id}`);
   }

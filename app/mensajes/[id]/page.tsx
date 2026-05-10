@@ -47,7 +47,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     (async () => {
       const u = await getCurrentUser();
       if (!u) { router.replace("/login"); return; }
-      const c = await getConversationById(id);
+      const c = await getConversationById(Number(id));
       if (!c) { router.replace("/mensajes"); return; }
       setUser(u);
       setConv(c);

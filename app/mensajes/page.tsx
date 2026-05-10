@@ -19,7 +19,7 @@ export default function MensajesPage() {
   const router = useRouter();
   const [user, setUser]   = useState<LocalUser | null>(null);
   const [convs, setConvs] = useState<Conversation[]>([]);
-  const [unreadMap, setUnreadMap] = useState<Map<string, boolean>>(new Map());
+  const [unreadMap, setUnreadMap] = useState<Map<number, boolean>>(new Map());
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -30,7 +30,7 @@ export default function MensajesPage() {
       const conversations = await getUserConversations(u.id);
       setConvs(conversations);
 
-      const map = new Map<string, boolean>();
+      const map = new Map<number, boolean>();
       await Promise.all(
         conversations.map(async conv => {
           const unread = await isConversationUnread(conv, u.id);

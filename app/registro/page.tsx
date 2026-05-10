@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
@@ -20,7 +20,7 @@ function inputStyle(hasError: boolean): React.CSSProperties {
   };
 }
 
-export default function RegistroPage() {
+function RegistroForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const redirect     = searchParams.get("redirect") ?? "/";
@@ -254,5 +254,13 @@ export default function RegistroPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function RegistroPage() {
+  return (
+    <Suspense fallback={<div><Navbar /></div>}>
+      <RegistroForm />
+    </Suspense>
   );
 }

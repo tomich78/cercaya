@@ -175,7 +175,6 @@ export default function PublicarPage() {
         distance:    "Cerca tuyo",
         bg,
         verified:    false,
-        sellerId:    0,
         userId:      user!.id,
       });
 

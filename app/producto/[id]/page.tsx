@@ -5,7 +5,7 @@ import Link from "next/link";
 import Navbar from "../../components/Navbar";
 import { products, sellers } from "../../data";
 import { getLocalProducts, type LocalProduct } from "../../lib/storage";
-import { getCurrentUser, type LocalUser } from "../../lib/auth";
+import { getCurrentUser, type LocalUser, type DniStatus } from "../../lib/auth";
 import { getOrCreateConversation } from "../../lib/messages";
 import { supabase } from "../../lib/supabase";
 
@@ -38,6 +38,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
           .eq("id", found.userId)
           .single();
         if (profileData) {
+          const dniStatus = (profileData.dni_status as string | null) ?? "none";
           setLocalUser({
             id:            profileData.id as string,
             name:          profileData.name as string,
@@ -45,7 +46,8 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
             initials:      profileData.initials as string,
             location:      profileData.location as string,
             phoneVerified: profileData.phone_verified as boolean,
-            dniVerified:   profileData.dni_verified as boolean,
+            dniVerified:   dniStatus === "approved",
+            dniStatus:     dniStatus as DniStatus,
             createdAt:     profileData.created_at as string,
           });
         }
