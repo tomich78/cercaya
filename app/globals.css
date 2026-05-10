@@ -1,0 +1,182 @@
+@import "tailwindcss";
+
+/* ── Modo claro (default) ───────────────────────────────────── */
+:root {
+  --bg:           #f5f5f3;
+  --surface:      #ffffff;
+  --border:       #e8e8e6;
+  --text:         #111111;
+  --text-2:       #666666;
+  --text-3:       #9b9b9b;
+  --green:        #0F6E56;
+  --green-subtle: #eef7f3;
+  --amber:        #b45309;
+}
+
+/* ── Modo oscuro — sistema (cuando no hay override manual) ──── */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:           #111110;
+    --surface:      #1c1c1a;
+    --border:       #2d2d2b;
+    --text:         #efefed;
+    --text-2:       #a0a09e;
+    --text-3:       #636361;
+    --green:        #1aab82;
+    --green-subtle: #0d2922;
+    --amber:        #d97706;
+  }
+}
+
+/* ── Modo oscuro — override manual ─────────────────────────── */
+[data-theme="dark"] {
+  --bg:           #111110;
+  --surface:      #1c1c1a;
+  --border:       #2d2d2b;
+  --text:         #efefed;
+  --text-2:       #a0a09e;
+  --text-3:       #636361;
+  --green:        #1aab82;
+  --green-subtle: #0d2922;
+  --amber:        #d97706;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  margin: 0;
+}
+
+a { text-decoration: none; color: inherit; }
+
+/* ── Layout responsivo ──────────────────────────────────────── */
+
+/* Grillas de 2 columnas */
+.two-col-product {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 28px;
+  align-items: start;
+}
+.two-col-publish {
+  display: grid;
+  grid-template-columns: 1fr 264px;
+  gap: 24px;
+  align-items: start;
+}
+
+/* Columna derecha sticky */
+.sticky-col {
+  position: sticky;
+  top: 68px;
+}
+
+/* Contenedor del chat — 100dvh para que el teclado virtual no tape el input */
+.chat-wrap {
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* ── Skeleton shimmer ───────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position:  600px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--border) 25%, var(--bg) 50%, var(--border) 75%);
+  background-size: 600px 100%;
+  animation: shimmer 1.4s infinite linear;
+  border-radius: 4px;
+}
+
+/* ── Toast ──────────────────────────────────────────────────── */
+.toast-stack {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 9999;
+  pointer-events: none;
+  align-items: center;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.13);
+  white-space: nowrap;
+  animation-name: toast-in;
+  animation-duration: 0.25s;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.toast-success {
+  background: #111;
+  color: #fff;
+}
+.toast-error {
+  background: #dc2626;
+  color: #fff;
+}
+.toast-info {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+@media (max-width: 768px) {
+  .toast-stack {
+    bottom: 16px;
+    width: calc(100% - 2rem);
+  }
+  .toast {
+    white-space: normal;
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Colapsar grillas a 1 columna */
+  .two-col-product,
+  .two-col-publish {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  /* Desactivar sticky en mobile */
+  .sticky-col {
+    position: static;
+  }
+
+  /* Ocultar elementos no esenciales en mobile */
+  .hide-mobile {
+    display: none !important;
+  }
+
+  /* Reducir padding lateral en páginas */
+  .page-body {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+}

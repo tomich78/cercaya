@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CercaYa — Pitch</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green:  #0F6E56;
+      --green2: #1aab82;
+      --dark:   #0e0e0d;
+      --text:   #f0f0ee;
+      --muted:  #888886;
+      --surface:#1a1a18;
+      --border: #2c2c2a;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: #0e0e0d;
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      width: 210mm;
+      margin: 0 auto;
+    }
+
+    /* ─── PAGE BREAKS ─────────────────────────── */
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      padding: 14mm 16mm;
+      position: relative;
+      page-break-after: always;
+      overflow: hidden;
+    }
+
+    @media print {
+      body { width: 210mm; }
+      .page { page-break-after: always; }
+      @page { size: A4; margin: 0; }
+    }
+
+    /* ─── PAGE 1 — COVER ──────────────────────── */
+    .cover {
+      background: var(--dark);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .cover-bg {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 80% 20%, rgba(15,110,86,0.18) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 60% at 10% 80%, rgba(26,171,130,0.1) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .cover-top { position: relative; z-index: 1; }
+
+    .logo {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text);
+    }
+    .logo span { color: var(--green2); }
+
+    .cover-hero {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 18mm 0 10mm;
+    }
+
+    .cover-tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--green2);
+      border: 1px solid rgba(26,171,130,0.3);
+      padding: 4px 12px;
+      border-radius: 999px;
+      margin-bottom: 20px;
+    }
+
+    .cover-title {
+      font-size: 52px;
+      font-weight: 900;
+      letter-spacing: -3px;
+      line-height: 1;
+      margin-bottom: 10px;
+    }
+    .cover-title .accent { color: var(--green2); }
+
+    .cover-subtitle {
+      font-size: 17px;
+      font-weight: 300;
+      color: #a0a09e;
+      max-width: 320px;
+      margin: 0 auto 32px;
+      line-height: 1.6;
+    }
+
+    .cover-stat-row {
+      display: flex;
+      justify-content: center;
+      gap: 36px;
+    }
+    .cover-stat { text-align: center; }
+    .cover-stat-num {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--green2);
+      letter-spacing: -1.5px;
+      line-height: 1;
+    }
+    .cover-stat-lbl {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+      font-weight: 400;
+    }
+
+    .cover-bottom {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .cover-url {
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .cover-url strong {
+      color: var(--green2);
+      font-weight: 600;
+    }
+
+    .cover-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 5px 10px;
+      border-radius: 6px;
+    }
+    .dot-green {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #22c55e;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity:1; }
+      50%      { opacity:0.4; }
+    }
+
+    /* ─── PAGE 2 — PROBLEMA + SOLUCIÓN ───────── */
+    .page-dark { background: var(--dark); }
+
+    .section-label {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--green2);
+      margin-bottom: 14px;
+    }
+
+    .section-title {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -1.2px;
+      line-height: 1.15;
+      margin-bottom: 10px;
+    }
+
+    .section-body {
+      font-size: 13px;
+      color: #a0a09e;
+      line-height: 1.75;
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 20px 0;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+
+    .card-icon {
+      font-size: 22px;
+      margin-bottom: 10px;
+    }
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      letter-spacing: -0.3px;
+    }
+    .card-body {
+      font-size: 11.5px;
+      color: #888;
+      line-height: 1.65;
+    }
+
+    .pain-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .pain-list li {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      font-size: 12.5px;
+      color: #a0a09e;
+      line-height: 1.5;
+    }
+    .pain-x {
+      color: #ef4444;
+      font-weight: 700;
+      font-size: 14px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .check-green {
+      color: var(--green2);
+      font-weight: 700;
+      font-size: 14px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .highlight-box {
+      background: linear-gradient(135deg, rgba(15,110,86,0.15), rgba(26,171,130,0.08));
+      border: 1px solid rgba(26,171,130,0.25);
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin: 18px 0;
+    }
+    .highlight-box p {
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.65;
+      color: #d0e8e0;
+    }
+    .highlight-box strong { color: var(--green2); font-weight: 700; }
+
+    /* ─── PAGE 3 — FEATURES ───────────────────── */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 14px 14px;
+    }
+    .feature-icon { font-size: 20px; margin-bottom: 8px; }
+    .feature-name {
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 5px;
+      letter-spacing: -0.2px;
+    }
+    .feature-desc {
+      font-size: 10.5px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .tag-live {
+      display: inline-block;
+      font-size: 8.5px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--green2);
+      background: rgba(26,171,130,0.12);
+      border: 1px solid rgba(26,171,130,0.25);
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+    }
+    .tag-soon {
+      display: inline-block;
+      font-size: 8.5px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: #d97706;
+      background: rgba(217,119,6,0.1);
+      border: 1px solid rgba(217,119,6,0.25);
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+    }
+
+    /* ─── PAGE 4 — ROADMAP + CTA ──────────────── */
+    .roadmap-row {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .roadmap-item {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .roadmap-num {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: rgba(26,171,130,0.15);
+      border: 1px solid rgba(26,171,130,0.3);
+      color: var(--green2);
+      font-size: 10px;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .roadmap-text strong {
+      font-size: 12.5px;
+      font-weight: 700;
+      display: block;
+      margin-bottom: 2px;
+      letter-spacing: -0.2px;
+    }
+    .roadmap-text span {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .cta-box {
+      background: linear-gradient(135deg, rgba(15,110,86,0.2), rgba(26,171,130,0.1));
+      border: 1px solid rgba(26,171,130,0.3);
+      border-radius: 14px;
+      padding: 22px 24px;
+      text-align: center;
+      margin-top: 10px;
+    }
+    .cta-title {
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: -1px;
+      margin-bottom: 8px;
+    }
+    .cta-title span { color: var(--green2); }
+    .cta-body {
+      font-size: 12.5px;
+      color: #a0a09e;
+      line-height: 1.65;
+      max-width: 340px;
+      margin: 0 auto 18px;
+    }
+    .cta-url {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--green2);
+      letter-spacing: -0.5px;
+    }
+    .cta-sub {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    .footer-note {
+      font-size: 10px;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 16px;
+    }
+
+    /* ── PAGE NUMBER ──────────────────────── */
+    .page-num {
+      position: absolute;
+      bottom: 10mm;
+      right: 16mm;
+      font-size: 10px;
+      color: var(--border);
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════ PAGE 1: COVER -->
+<div class="page cover">
+  <div class="cover-bg"></div>
+
+  <div class="cover-top" style="display:flex; justify-content:space-between; align-items:center;">
+    <div class="logo">cerca<span>ya</span></div>
+    <div style="font-size:10px; color:var(--muted);">Demo · 2025</div>
+  </div>
+
+  <div class="cover-hero">
+    <div class="cover-tag">Marketplace local · Argentina</div>
+    <div class="cover-title">
+      Comprá y vendé<br/>
+      <span class="accent">cerca tuyo.</span>
+    </div>
+    <div class="cover-subtitle">
+      La app para comprar y vender productos de segunda mano con tu vecino, sin comisiones y sin complicaciones.
+    </div>
+
+    <div class="cover-stat-row">
+      <div class="cover-stat">
+        <div class="cover-stat-num">0%</div>
+        <div class="cover-stat-lbl">comisiones</div>
+      </div>
+      <div class="cover-stat">
+        <div class="cover-stat-num">⚡</div>
+        <div class="cover-stat-lbl">tiempo real</div>
+      </div>
+      <div class="cover-stat">
+        <div class="cover-stat-num">📍</div>
+        <div class="cover-stat-lbl">hiper-local</div>
+      </div>
+      <div class="cover-stat">
+        <div class="cover-stat-num">🔒</div>
+        <div class="cover-stat-lbl">verificado</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cover-bottom">
+    <div class="cover-url">
+      Probala en <strong>cercaya.vercel.app</strong>
+    </div>
+    <div class="cover-badge">
+      <div class="dot-green"></div>
+      Demo disponible ahora
+    </div>
+  </div>
+
+  <div class="page-num">1 / 4</div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════ PAGE 2: PROBLEMA + SOLUCIÓN -->
+<div class="page page-dark">
+
+  <div class="section-label">El problema</div>
+  <div class="section-title">Vender en Argentina<br/>debería ser más simple.</div>
+  <div class="section-body" style="margin-bottom:16px;">
+    Las plataformas actuales cobran comisiones altas, muestran productos de todo el país cuando solo necesitás ver lo que tenés a 10 cuadras, y no priorizan la confianza entre las personas.
+  </div>
+
+  <div class="two-col" style="margin-bottom:18px;">
+    <div class="card">
+      <div class="card-icon">😤</div>
+      <div class="card-title">Lo que pasa hoy</div>
+      <ul class="pain-list">
+        <li><span class="pain-x">✕</span> Comisiones del 10–18% en MercadoLibre</li>
+        <li><span class="pain-x">✕</span> Ves productos de 800 km si vivís en provincia</li>
+        <li><span class="pain-x">✕</span> No sabés si el vendedor es real</li>
+        <li><span class="pain-x">✕</span> Coordinar envío es un caos de WhatsApps</li>
+        <li><span class="pain-x">✕</span> OLX y similares sin actualizaciones desde 2020</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-icon">✅</div>
+      <div class="card-title">Lo que hace CercaYa</div>
+      <ul class="pain-list">
+        <li><span class="check-green">✓</span> Sin comisiones — siempre gratis publicar</li>
+        <li><span class="check-green">✓</span> Filtrás por distancia real (5, 10, 25 km)</li>
+        <li><span class="check-green">✓</span> Verificación de identidad con DNI</li>
+        <li><span class="check-green">✓</span> Reserva con método de pago y envío integrado</li>
+        <li><span class="check-green">✓</span> Chat en tiempo real dentro de la app</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight-box">
+    <p>
+      En Argentina hay <strong>45 millones de personas</strong> y un mercado de segunda mano valuado en
+      <strong>miles de millones de pesos anuales</strong>. La mayoría de las transacciones se hacen por
+      grupos de WhatsApp, Facebook Marketplace o plataformas desactualizadas.
+      <strong>CercaYa viene a modernizar eso.</strong>
+    </p>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section-label">La oportunidad</div>
+  <div class="two-col">
+    <div>
+      <div style="font-size:12.5px; color:#a0a09e; line-height:1.65;">
+        El 68% de los argentinos preferiría comprarle a alguien de su ciudad antes que esperar un envío de otra provincia.
+        CercaYa pone el foco exactamente ahí: <strong style="color:var(--text);">el barrio como mercado.</strong>
+      </div>
+    </div>
+    <div>
+      <div style="font-size:12.5px; color:#a0a09e; line-height:1.65;">
+        Con precios en pesos actualizando constantemente, la inmediatez del retiro en persona se vuelve cada vez
+        más valiosa. <strong style="color:var(--text);">Cerrar en el día, sin esperas ni intermediarios.</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-num">2 / 4</div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════ PAGE 3: FEATURES -->
+<div class="page page-dark">
+
+  <div class="section-label">Lo que ya funciona</div>
+  <div class="section-title" style="margin-bottom:18px;">Construido para el usuario argentino.</div>
+
+  <div class="feature-grid" style="margin-bottom:22px;">
+
+    <div class="feature-card">
+      <div class="tag-live">En vivo</div>
+      <div class="feature-icon">📍</div>
+      <div class="feature-name">Ubicación real</div>
+      <div class="feature-desc">Distancia calculada con el API oficial del gobierno argentino (georef.gob.ar). Filtrás por radio en km.</div>
+    </div>
+
+    <div class="feature-card">
+      <div class="tag-live">En vivo</div>
+      <div class="feature-icon">🔒</div>
+      <div class="feature-name">Identidad verificada</div>
+      <div class="feature-desc">Verificación de teléfono y DNI. Los compradores saben con quién están tratando antes de acordar.</div>
+    </div>
+
+    <div class="feature-card">
+      <div class="tag-live">En vivo</div>
+      <div class="feature-icon">💬</div>
+      <div class="feature-name">Chat en tiempo real</div>
+      <div class="feature-desc">Mensajes entre comprador y vendedor con Supabase Realtime. Sin recargar la página.</div>
+    </div>
+
+    <div class="feature-card">
+      <div class="tag-live">En vivo</div>
+      <div class="feature-icon">🛒</div>
+      <div class="feature-name">Reserva con forma de pago</div>
+      <div class="feature-desc">El comprador elige efectivo o transferencia, y el método de envío. Se genera un mensaje estructurado automáticamente.</div>
+    </div>
+
+    <div class="feature-card">
+      <div class="tag-live">En vivo</div>
+      <div class="feature-icon">📸</div>
+      <div class="feature-name">Fotos de productos</div>
+      <div class="feature-desc">Hasta 5 imágenes por publicación con galería. Subidas a Supabase Storage con vista previa instantánea.</div>
+    </div>
+
+    <div class="feature-card">
+      <div class="tag-live">En vivo</div>
+      <div class="feature-icon">⭐</div>
+      <div class="feature-name">Sistema de reseñas</div>
+      <div class="feature-desc">Compradores califican vendedores con estrellas y comentario. Perfil público con historial de ventas.</div>
+    </div>
+
+    <div class="feature-card">
+      <div class="tag-soon">Próximamente</div>
+      <div class="feature-icon">🛵</div>
+      <div class="feature-name">Envío con apps de delivery</div>
+      <div class="feature-desc">Integración con Uber Flash, Rappi y PedidosYa para cotizar y coordinar envíos sin salir de la app.</div>
+    </div>
+
+    <div class="feature-card">
+      <div class="tag-soon">Próximamente</div>
+      <div class="feature-icon">💳</div>
+      <div class="feature-name">Pagos integrados</div>
+      <div class="feature-desc">Integración con Mercado Pago para que la transacción ocurra dentro de CercaYa con protección al comprador.</div>
+    </div>
+
+    <div class="feature-card">
+      <div class="tag-soon">Próximamente</div>
+      <div class="feature-icon">🔔</div>
+      <div class="feature-name">Alertas inteligentes</div>
+      <div class="feature-desc">"Avisame cuando aparezca un iPhone 14 a menos de 10 km." Notificaciones push en tiempo real.</div>
+    </div>
+
+  </div>
+
+  <div class="highlight-box">
+    <p>
+      Stack: <strong>Next.js 16 · React 19 · Supabase (Postgres + Auth + Storage + Realtime)</strong> · Deploy en Vercel.
+      Arquitectura pensada para escalar desde el día uno.
+    </p>
+  </div>
+
+  <div class="page-num">3 / 4</div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════ PAGE 4: ROADMAP + CTA -->
+<div class="page page-dark">
+
+  <div class="two-col" style="gap:28px;">
+    <div>
+      <div class="section-label">Roadmap</div>
+      <div class="section-title" style="font-size:22px; margin-bottom:18px;">Lo que viene.</div>
+
+      <div class="roadmap-row">
+        <div class="roadmap-item">
+          <div class="roadmap-num">1</div>
+          <div class="roadmap-text">
+            <strong>App nativa iOS + Android</strong>
+            <span>React Native con la misma base de código. Notificaciones push nativas y experiencia de cámara mejorada.</span>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-num">2</div>
+          <div class="roadmap-text">
+            <strong>Pagos con Mercado Pago</strong>
+            <span>Transacciones seguras dentro de la app. El vendedor cobra, CercaYa toma una pequeña comisión solo si la venta se concreta.</span>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-num">3</div>
+          <div class="roadmap-text">
+            <strong>API de delivery en tiempo real</strong>
+            <span>Cotización y despacho directo con Uber Flash, Rappi y PedidosYa. El comprador paga el envío desde la reserva.</span>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-num">4</div>
+          <div class="roadmap-text">
+            <strong>CercaYa Pro para vendedores</strong>
+            <span>Destacar publicaciones, estadísticas de visitas, múltiples fotos en carrusel y badge de vendedor confiable.</span>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-num">5</div>
+          <div class="roadmap-text">
+            <strong>Comunidades por barrio</strong>
+            <span>Grupos hiperlocales donde vecinos del mismo barrio pueden ofrecer, buscar y hasta hacer trueques.</span>
+          </div>
+        </div>
+        <div class="roadmap-item">
+          <div class="roadmap-num">6</div>
+          <div class="roadmap-text">
+            <strong>Alertas de búsqueda</strong>
+            <span>"Avisame si aparece un MacBook Air cerca mío." Sistema de alertas por categoría, radio y precio máximo.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; justify-content:space-between;">
+
+      <div>
+        <div class="section-label">Modelo de negocio</div>
+        <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
+          <div class="card" style="padding:12px 14px;">
+            <div style="font-size:12px; font-weight:700; margin-bottom:4px;">Freemium</div>
+            <div style="font-size:11px; color:var(--muted); line-height:1.55;">Publicar siempre gratis. Funciones premium opcionales para vendedores frecuentes.</div>
+          </div>
+          <div class="card" style="padding:12px 14px;">
+            <div style="font-size:12px; font-weight:700; margin-bottom:4px;">Comisión sobre pagos</div>
+            <div style="font-size:11px; color:var(--muted); line-height:1.55;">Pequeño porcentaje solo cuando la transacción se procesa dentro de la app. Cero si el trato es externo.</div>
+          </div>
+          <div class="card" style="padding:12px 14px;">
+            <div style="font-size:12px; font-weight:700; margin-bottom:4px;">Publicaciones destacadas</div>
+            <div style="font-size:11px; color:var(--muted); line-height:1.55;">Vendedores que quieran más visibilidad pagan para aparecer primero en su categoría y zona.</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-label">Ventaja competitiva</div>
+        <div style="font-size:11.5px; color:#a0a09e; line-height:1.7; margin-bottom:14px;">
+          MercadoLibre es para <em>todo el país</em>. Facebook Marketplace no tiene foco ni confianza.
+          CercaYa es la única plataforma diseñada desde cero para la realidad argentina:
+          <strong style="color:var(--text);">hiper-local, con verificación de identidad y coordinación de entrega integrada.</strong>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="cta-box">
+    <div class="cta-title">¿Querés probarlo <span>ahora mismo?</span></div>
+    <div class="cta-body">
+      La demo está en vivo. Creá una cuenta en 30 segundos, publicá tu primer producto y recibí tu primera consulta.
+    </div>
+    <div class="cta-url">cercaya.vercel.app</div>
+    <div class="cta-sub">Gratis · Sin tarjeta · Funciona en cualquier dispositivo</div>
+  </div>
+
+  <div class="footer-note">
+    CercaYa · Demo 2025 · Desarrollado con Next.js + Supabase · Tomás
+  </div>
+
+  <div class="page-num">4 / 4</div>
+</div>
+
+</body>
+</html>
