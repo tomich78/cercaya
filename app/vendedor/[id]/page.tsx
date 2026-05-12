@@ -3,7 +3,6 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "../../components/Navbar";
-import { sellers, products } from "../../data";
 import { getCurrentUser, getDisplayName, type LocalUser } from "../../lib/auth";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { supabase } from "../../lib/supabase";
@@ -67,17 +66,12 @@ export default function SellerPage({ params }: { params: Promise<{ id: string }>
   const { id }   = use(params);
   const router   = useRouter();
 
-  // Determine if id looks like a numeric mock seller ID or a UUID
-  const isMockId = /^\d+$/.test(id);
-  const mockSeller = isMockId ? sellers.find(s => s.id === Number(id)) : undefined;
-  const sellerProducts = isMockId ? products.filter(p => p.sellerId === Number(id)) : [];
-
   const [profileSeller, setProfileSeller] = useState<ProfileSeller | null>(null);
   const [realProducts, setRealProducts] = useState<LocalProduct[]>([]);
   // Título dinámico con nombre del vendedor/negocio
   const titleSellerName = profileSeller
     ? (profileSeller.isBusiness && profileSeller.businessName ? profileSeller.businessName : profileSeller.name)
-    : mockSeller?.name;
+    : undefined;
   usePageTitle(titleSellerName ? `Perfil de ${titleSellerName}` : undefined);
   const [localReviews, setLocalReviews] = useState<Review[]>([]);
   const [alreadyReviewed, setAlreadyReviewed] = useState(false);
@@ -95,41 +89,38 @@ export default function SellerPage({ params }: { params: Promise<{ id: string }>
       const u = await getCurrentUser();
       setCurrentUser(u);
 
-      if (!isMockId) {
-        // Real Supabase user — perfil
-        const { data: profileData } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", id)
-          .single();
-        if (profileData) {
-          setProfileSeller({
-            id:               profileData.id as string,
-            name:             profileData.name as string,
-            initials:         profileData.initials as string,
-            location:         profileData.location as string,
-            avatarUrl:        profileData.avatar_url as string | undefined,
-            phoneVerified:    profileData.phone_verified as boolean,
-            dniVerified:      (profileData.dni_status as string) === "approved",
-            memberSince:      new Date(profileData.created_at as string).toLocaleDateString("es-AR", { month: "long", year: "numeric" }),
-            isBusiness:           (profileData.is_business as boolean) ?? false,
-            businessName:         profileData.business_name as string | undefined,
-            businessCategory:     profileData.business_category as string | undefined,
-            businessHours:        profileData.business_hours as string | undefined,
-            businessDesc:         profileData.business_desc as string | undefined,
-            businessCuitVerified: (profileData.business_cuit_verified as boolean) ?? false,
-          });
-        }
-        // Publicaciones reales de este vendedor
-        const allProds = await getLocalProducts();
-        setRealProducts(allProds.filter(p => p.userId === id && !p.sold));
+      // Real Supabase user — perfil
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", id)
+        .single();
+      if (profileData) {
+        setProfileSeller({
+          id:               profileData.id as string,
+          name:             profileData.name as string,
+          initials:         profileData.initials as string,
+          location:         profileData.location as string,
+          avatarUrl:        profileData.avatar_url as string | undefined,
+          phoneVerified:    profileData.phone_verified as boolean,
+          dniVerified:      (profileData.dni_status as string) === "approved",
+          memberSince:      new Date(profileData.created_at as string).toLocaleDateString("es-AR", { month: "long", year: "numeric" }),
+          isBusiness:           (profileData.is_business as boolean) ?? false,
+          businessName:         profileData.business_name as string | undefined,
+          businessCategory:     profileData.business_category as string | undefined,
+          businessHours:        profileData.business_hours as string | undefined,
+          businessDesc:         profileData.business_desc as string | undefined,
+          businessCuitVerified: (profileData.business_cuit_verified as boolean) ?? false,
+        });
       }
+      // Publicaciones reales de este vendedor
+      const allProds = await getLocalProducts();
+      setRealProducts(allProds.filter(p => p.userId === id && !p.sold));
 
       const reviews = await getReviewsForSeller(id);
       setLocalReviews(reviews);
 
-      const seedRatings = mockSeller ? mockSeller.reviews.map(r => r.rating) : [];
-      const computedStats = await calcStats(id, seedRatings);
+      const computedStats = await calcStats(id, []);
       setStats(computedStats);
 
       if (u) {
@@ -139,9 +130,9 @@ export default function SellerPage({ params }: { params: Promise<{ id: string }>
 
       setReady(true);
     })();
-  }, [id, isMockId, mockSeller]);
+  }, [id]);
 
-  const seller = mockSeller ?? profileSeller;
+  const seller = profileSeller;
 
   // Nombre a mostrar: nombre del negocio si está activo, si no el nombre personal
   const sellerDisplayName = profileSeller?.isBusiness && profileSeller.businessName
@@ -199,8 +190,8 @@ export default function SellerPage({ params }: { params: Promise<{ id: string }>
   const trustLevel = seller.phoneVerified && seller.dniVerified ? "full"
     : seller.phoneVerified ? "partial" : "none";
 
-  const displayRating = stats.count ? stats.rating : (mockSeller ? mockSeller.rating : 0);
-  const displayCount  = stats.count || (mockSeller ? mockSeller.reviews.length : 0);
+  const displayRating = stats.rating;
+  const displayCount  = stats.count;
 
   async function handleSubmit() {
     if (!rating || !text.trim() || !currentUser) return;
@@ -237,25 +228,13 @@ export default function SellerPage({ params }: { params: Promise<{ id: string }>
     router.push(`/mensajes/${conv.id}`);
   }
 
-  // Unified review list for display: local first, then mock
-  const allReviews = [
-    ...localReviews.map(r => ({
-      key:      String(r.id),
-      name:     r.reviewerName,
-      initials: r.reviewerInitials,
-      rating:   r.rating,
-      text:     r.text,
-      isLocal:  true,
-    })),
-    ...(mockSeller ? mockSeller.reviews.map((r, i) => ({
-      key:      `mock-${i}`,
-      name:     r.name,
-      initials: r.name.split(" ").map((p: string) => p[0]).join("").slice(0, 2).toUpperCase(),
-      rating:   r.rating,
-      text:     r.text,
-      isLocal:  false,
-    })) : []),
-  ];
+  const allReviews = localReviews.map(r => ({
+    key:      String(r.id),
+    name:     r.reviewerName,
+    initials: r.reviewerInitials,
+    rating:   r.rating,
+    text:     r.text,
+  }));
 
   const canReview = !!currentUser && !alreadyReviewed;
 
@@ -344,24 +323,15 @@ export default function SellerPage({ params }: { params: Promise<{ id: string }>
 
           {/* Stats */}
           <div style={{
-            display: "grid", gridTemplateColumns: mockSeller ? "repeat(3, 1fr)" : "repeat(1, 1fr)",
+            display: "grid", gridTemplateColumns: "repeat(1, 1fr)",
             border: "1px solid var(--border)", borderRadius: 6, overflow: "hidden", marginBottom: 20,
           }}>
-            {[
-              ...(mockSeller ? [{ val: String(mockSeller.sales), lbl: "ventas realizadas" }] : []),
-              { val: `★ ${displayRating}`, lbl: `reputación (${displayCount})`, amber: true },
-              ...(mockSeller ? [{ val: mockSeller.responseTime, lbl: "tiempo de respuesta" }] : []),
-            ].map((s, i, arr) => (
-              <div key={s.lbl} style={{
-                padding: "12px 8px", textAlign: "center", background: "var(--bg)",
-                borderRight: i < arr.length - 1 ? "1px solid var(--border)" : "none",
-              }}>
-                <div style={{ fontSize: 16, fontWeight: 700, color: s.amber ? "#d97706" : "var(--text)", marginBottom: 3 }}>
-                  {s.val}
-                </div>
-                <div style={{ fontSize: 11, color: "var(--text-3)" }}>{s.lbl}</div>
+            <div style={{ padding: "12px 8px", textAlign: "center", background: "var(--bg)" }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#d97706", marginBottom: 3 }}>
+                ★ {displayRating || "—"}
               </div>
-            ))}
+              <div style={{ fontSize: 11, color: "var(--text-3)" }}>reputación ({displayCount})</div>
+            </div>
           </div>
 
           {/* Verifications */}
@@ -508,28 +478,13 @@ export default function SellerPage({ params }: { params: Promise<{ id: string }>
           )}
         </div>
 
-        {/* Publicaciones (mock sellers o usuarios reales) */}
-        {(sellerProducts.length > 0 || realProducts.length > 0) && (
+        {/* Publicaciones */}
+        {realProducts.length > 0 && (
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase" as const, letterSpacing: 0.3, marginBottom: 12 }}>
               Publicaciones de {sellerDisplayName.split(" ")[0]}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
-              {/* Mock products */}
-              {sellerProducts.map(p => (
-                <Link key={p.id} href={`/producto/${p.id}`}>
-                  <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", cursor: "pointer", transition: "border-color 0.12s" }}
-                    onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.borderColor = "#bfbfbb"}
-                    onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border)"}>
-                    <div style={{ background: p.bg, height: 96, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 38 }}>{p.emoji}</div>
-                    <div style={{ padding: "9px 11px 11px" }}>
-                      <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 4, lineHeight: 1.3, color: "var(--text)" }}>{p.title}</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--green)", letterSpacing: -0.3 }}>{p.price}</div>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-              {/* Real Supabase products */}
               {realProducts.map(p => (
                 <Link key={p.id} href={`/producto/${p.id}`}>
                   <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", cursor: "pointer", transition: "border-color 0.12s" }}
@@ -554,25 +509,15 @@ export default function SellerPage({ params }: { params: Promise<{ id: string }>
           </div>
         )}
 
-        {isMockId ? (
-          <div style={{
-            width: "100%", padding: "11px", background: "var(--bg)", color: "var(--text-3)",
-            border: "1px solid var(--border)", borderRadius: 6, fontSize: 12,
-            textAlign: "center", lineHeight: 1.4, boxSizing: "border-box",
-          }}>
-            Vendedor de demostración — no disponible para contacto
-          </div>
-        ) : (
-          <button
-            onClick={handleContact}
-            style={{
-              width: "100%", padding: "11px", background: "var(--green)", color: "#fff",
-              border: "none", borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: "pointer",
-            }}
-          >
-            Contactar a {sellerDisplayName.split(" ")[0]}
-          </button>
-        )}
+        <button
+          onClick={handleContact}
+          style={{
+            width: "100%", padding: "11px", background: "var(--green)", color: "#fff",
+            border: "none", borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: "pointer",
+          }}
+        >
+          Contactar a {sellerDisplayName.split(" ")[0]}
+        </button>
       </div>
     </div>
   );

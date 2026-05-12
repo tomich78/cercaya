@@ -6,7 +6,7 @@ import Navbar from "./components/Navbar";
 import ProductCard from "./components/ProductCard";
 import ProductCardSkeleton from "./components/ProductCardSkeleton";
 import AdSlot from "./components/AdSlot";
-import { products, categories } from "./data";
+import { categories } from "./data";
 import { getLocalProducts, type LocalProduct } from "./lib/storage";
 import { getCurrentUser, type LocalUser } from "./lib/auth";
 import { haversineKm, formatDistance } from "./lib/geo";
@@ -144,15 +144,7 @@ function HomeInner() {
   const loading = localProducts === null;
   const hasUserLocation = userLat !== null && userLng !== null;
 
-  // Combinar y deduplicar por ID (Supabase primero, mock data como fallback)
-  const baseProducts = (() => {
-    const seen = new Set<number>();
-    return [...(localProducts ?? []), ...products].filter(p => {
-      if (seen.has(p.id)) return false;
-      seen.add(p.id);
-      return true;
-    });
-  })();
+  const baseProducts = localProducts ?? [];
 
   // Calcular distancia real para cada producto si el usuario tiene ubicación
   const allProducts = hasUserLocation

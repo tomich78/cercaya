@@ -3,7 +3,6 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "../../components/Navbar";
-import { products, sellers } from "../../data";
 import { getLocalProducts, incrementProductViews, type LocalProduct } from "../../lib/storage";
 import { getCurrentUser, getDisplayName, type LocalUser, type DniStatus } from "../../lib/auth";
 import { getOrCreateConversation } from "../../lib/messages";
@@ -11,16 +10,14 @@ import { supabase } from "../../lib/supabase";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { useToast } from "../../components/ToastProvider";
 
-type AnyProduct = (typeof products)[0] | LocalProduct;
-
 export default function ProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
 
   const router = useRouter();
   const { toast } = useToast();
-  const [product, setProduct] = useState<AnyProduct | null>(null);
+  const [product, setProduct] = useState<LocalProduct | null>(null);
   // Título dinámico cuando carga el producto
-  usePageTitle((product as { title?: string } | null)?.title ?? (products.find(p => p.id === Number(id)) as { title?: string })?.title);
+  usePageTitle(product?.title);
   const [localUser, setLocalUser] = useState<LocalUser | null>(null);
   const [currentUser, setCurrentUser] = useState<LocalUser | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -29,8 +26,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   useEffect(() => {
     (async () => {
       const local = await getLocalProducts();
-      const all: AnyProduct[] = [...local, ...products];
-      const found = all.find(p => String(p.id) === id) ?? null;
+      const found = local.find(p => String(p.id) === id) ?? null;
       setProduct(found);
 
       const cu = await getCurrentUser();
@@ -77,9 +73,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
     })();
   }, [id]);
 
-  // Mientras no hidrata, intentar encontrar en mock data para evitar flash
-  const mockProduct = products.find(p => p.id === Number(id));
-  const displayed = product ?? mockProduct ?? null;
+  const displayed = product;
 
   if (!displayed && !hydrated) {
     return (
@@ -126,8 +120,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
     );
   }
 
-  const seller = sellers.find(s => s.id === displayed.sellerId);
-  const userId = "userId" in displayed ? displayed.userId : undefined;
+  const userId = displayed.userId;
   const isOwnProduct = !!currentUser && !!userId && currentUser.id === userId;
 
   async function handleContact(
@@ -151,10 +144,6 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
     });
     router.push(`/mensajes/${conv.id}`);
   }
-  const trustLevel = seller
-    ? seller.phoneVerified && seller.dniVerified ? "full"
-      : seller.phoneVerified ? "partial" : "none"
-    : "none";
 
   async function handleShare() {
     const url = window.location.href;
@@ -478,96 +467,6 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                     </Link>
                   </>
                 )}
-              </div>
-            ) : seller ? (
-              <div style={{
-                background: "var(--surface)", border: "1px solid var(--border)",
-                borderRadius: 8, padding: "1.25rem",
-              }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", marginBottom: 14, textTransform: "uppercase" as const, letterSpacing: 0.5 }}>
-                  Vendedor
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-                  <div style={{
-                    width: 44, height: 44, borderRadius: "50%",
-                    background: "var(--green-subtle)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 15, fontWeight: 600, color: "var(--green)", flexShrink: 0,
-                  }}>
-                    {seller.initials}
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.2 }}>{seller.name}</div>
-                    <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Desde {seller.memberSince}</div>
-                  </div>
-                </div>
-
-                <div style={{
-                  display: "inline-flex", alignItems: "center", gap: 5,
-                  padding: "4px 10px", borderRadius: 4, fontSize: 12, fontWeight: 600, marginBottom: 14,
-                  background: trustLevel === "full" ? "var(--green-subtle)" : trustLevel === "partial" ? "#fef3c7" : "var(--bg)",
-                  color: trustLevel === "full" ? "var(--green)" : trustLevel === "partial" ? "var(--amber)" : "var(--text-3)",
-                }}>
-                  {trustLevel === "full" ? "✓ Verificado completo" :
-                    trustLevel === "partial" ? "~ Verificación parcial" : "Sin verificar"}
-                </div>
-
-                <div style={{
-                  display: "grid", gridTemplateColumns: "repeat(3, 1fr)",
-                  border: "1px solid var(--border)", borderRadius: 6, overflow: "hidden", marginBottom: 14,
-                }}>
-                  {[
-                    { val: String(seller.sales), lbl: "ventas" },
-                    { val: `★ ${seller.rating}`, lbl: "reputación", amber: true },
-                    { val: seller.responseTime, lbl: "respuesta" },
-                  ].map((s, i) => (
-                    <div key={s.lbl} style={{
-                      padding: "9px 6px", textAlign: "center", background: "var(--bg)",
-                      borderRight: i < 2 ? "1px solid var(--border)" : "none",
-                    }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: s.amber ? "#d97706" : "var(--text)" }}>{s.val}</div>
-                      <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>{s.lbl}</div>
-                    </div>
-                  ))}
-                </div>
-
-                <div style={{ paddingTop: 12, borderTop: "1px solid var(--border)", marginBottom: 14 }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase" as const, letterSpacing: 0.5, marginBottom: 8 }}>
-                    Identidad
-                  </div>
-                  {[
-                    { label: "Teléfono", ok: seller.phoneVerified },
-                    { label: "DNI", ok: seller.dniVerified },
-                  ].map(v => (
-                    <div key={v.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                      <span style={{ fontSize: 13, color: "var(--text-2)" }}>{v.label}</span>
-                      <span style={{
-                        fontSize: 11, fontWeight: 600,
-                        color: v.ok ? "var(--green)" : "var(--text-3)",
-                        background: v.ok ? "var(--green-subtle)" : "transparent",
-                        padding: v.ok ? "2px 7px" : "0", borderRadius: 3,
-                      }}>
-                        {v.ok ? "Verificado" : "—"}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                <div style={{
-                  width: "100%", padding: "10px", background: "var(--bg)", color: "var(--text-3)",
-                  border: "1px solid var(--border)", borderRadius: 6, fontSize: 12,
-                  textAlign: "center", marginBottom: 8, lineHeight: 1.4,
-                }}>
-                  Vendedor de demostración
-                </div>
-
-                <Link href={`/vendedor/${seller.id}`} style={{
-                  display: "block", textAlign: "center", fontSize: 12,
-                  color: "var(--text-3)", padding: "6px 0",
-                }}>
-                  Ver perfil completo →
-                </Link>
               </div>
             ) : null}
           </div>

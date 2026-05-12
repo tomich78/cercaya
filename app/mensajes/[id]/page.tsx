@@ -14,14 +14,6 @@ import {
   type Message,
 } from "../../lib/messages";
 import { supabase } from "../../lib/supabase";
-import { sellers } from "../../data";
-
-// Respuestas automáticas para vendedores del mock data
-const AUTO_REPLIES: Record<number, string[]> = {
-  1: ["¡Hola! Sí, todavía está disponible. ¿Tenés alguna pregunta sobre el producto?"],
-  2: ["Hola! Claro, está disponible. Podemos coordinar para que lo veas si querés."],
-  3: ["¡Buenas! Sí, el producto está en excelente estado. ¿Cuándo podés pasar a verlo?"],
-};
 
 function timeAgo(iso: string): string {
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -155,10 +147,6 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   async function handleSend() {
     if (!text.trim() || !user || !conv) return;
 
-    const isFirstMsg  = messages.length === 0;
-    const mockSeller  = sellers.find(s => String(s.id) === conv.sellerId);
-    const isBuyer     = conv.buyerId === user.id;
-
     await sendMessage(conv.id, user.id, user.initials, text);
     await markConversationRead(conv.id, user.id);  // mis propios mensajes no son "no leídos"
     setText("");
@@ -167,17 +155,6 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     setMessages(await getMessages(conv.id));
     // Al enviar propio mensaje siempre scrollear al fondo
     setTimeout(() => scrollToBottom(true), 50);
-
-    // Auto-respuesta de vendedor mock (solo al primer mensaje del comprador)
-    if (isBuyer && isFirstMsg && mockSeller) {
-      const reply = AUTO_REPLIES[mockSeller.id]?.[0];
-      if (reply) {
-        setTimeout(async () => {
-          await sendMessage(conv.id, String(mockSeller.id), mockSeller.initials, reply);
-          setMessages(await getMessages(conv.id));
-        }, 1400);
-      }
-    }
   }
 
   function handleKey(e: React.KeyboardEvent) {

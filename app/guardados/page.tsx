@@ -5,17 +5,14 @@ import Link from "next/link";
 import Navbar from "../components/Navbar";
 import ProductCard from "../components/ProductCard";
 import { getFavorites, toggleFavorite } from "../lib/favorites";
-import { products } from "../data";
 import { getLocalProducts, type LocalProduct } from "../lib/storage";
 import { getCurrentUser } from "../lib/auth";
 import { usePageTitle } from "../lib/usePageTitle";
 
-type AnyProduct = (typeof products)[0] | LocalProduct;
-
 export default function GuardadosPage() {
   usePageTitle("Mis guardados");
   const router = useRouter();
-  const [savedProducts, setSavedProducts] = useState<AnyProduct[]>([]);
+  const [savedProducts, setSavedProducts] = useState<LocalProduct[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -27,10 +24,10 @@ export default function GuardadosPage() {
       }
 
       const favIds   = await getFavorites(u.id);
-      const allProds = [...(await getLocalProducts({ includeSold: true })), ...products] as AnyProduct[];
+      const allProds = await getLocalProducts({ includeSold: true });
       const saved    = favIds
         .map(id => allProds.find(p => p.id === id))
-        .filter((p): p is AnyProduct => !!p);
+        .filter((p): p is LocalProduct => !!p);
 
       setSavedProducts(saved);
       setHydrated(true);
