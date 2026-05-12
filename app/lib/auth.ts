@@ -17,10 +17,61 @@ export interface LocalUser {
   dniNumber?: string;
   dniStatus: DniStatus;   // estado real del proceso de verificación
   dniDocUrl?: string;     // path del doc subido en Supabase Storage
+  // Perfil de negocio
+  isBusiness: boolean;
+  businessPaid: boolean;          // pagó la suscripción
+  businessName?: string;
+  businessCategory?: string;
+  businessHours?: string;
+  businessDesc?: string;
+  businessCuit?: string;          // CUIT ingresado
+  businessCuitVerified: boolean;  // checksum válido
+  businessSlug?: string;          // URL pública: /negocio/[slug]
   createdAt: string;
 }
 
 // ── Helpers ───────────────────────────────────────────────────
+
+/**
+ * Nombre a mostrar públicamente: si el usuario tiene perfil de negocio activo
+ * y cargó un nombre de negocio, se usa ese; si no, el nombre personal.
+ */
+export function getDisplayName(
+  user: Pick<LocalUser, "isBusiness" | "businessName" | "name">,
+): string {
+  return user.isBusiness && user.businessName ? user.businessName : user.name;
+}
+
+/**
+ * Valida el CUIT/CUIL argentino usando el algoritmo oficial del dígito verificador.
+ * Acepta formatos: "20-12345678-9" o "20123456789"
+ * Retorna true si es válido.
+ */
+export function validateCuit(raw: string): boolean {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length !== 11) return false;
+
+  const weights = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
+  const sum = weights.reduce((acc, w, i) => acc + w * Number(digits[i]), 0);
+  const remainder = sum % 11;
+
+  let expected: number;
+  if (remainder === 0)      expected = 0;
+  else if (remainder === 1) return false; // CUIT inválido por definición
+  else                      expected = 11 - remainder;
+
+  return expected === Number(digits[10]);
+}
+
+/**
+ * Formatea un CUIT limpio a XX-XXXXXXXX-X
+ */
+export function formatCuit(raw: string): string {
+  const d = raw.replace(/\D/g, "").slice(0, 11);
+  if (d.length <= 2)  return d;
+  if (d.length <= 10) return `${d.slice(0, 2)}-${d.slice(2)}`;
+  return `${d.slice(0, 2)}-${d.slice(2, 10)}-${d.slice(10)}`;
+}
 
 function makeInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
@@ -31,21 +82,30 @@ function makeInitials(name: string): string {
 function rowToUser(profile: Record<string, unknown>, email: string): LocalUser {
   const dniStatus = (profile.dni_status as DniStatus | null) ?? "none";
   return {
-    id:            profile.id as string,
-    name:          profile.name as string,
+    id:                   profile.id as string,
+    name:                 profile.name as string,
     email,
-    initials:      profile.initials as string,
-    location:      (profile.location as string) ?? "",
-    lat:           profile.lat as number | undefined,
-    lng:           profile.lng as number | undefined,
-    avatarUrl:     profile.avatar_url as string | undefined,
-    phoneVerified: profile.phone_verified as boolean,
-    phoneNumber:   profile.phone_number as string | undefined,
-    dniVerified:   dniStatus === "approved",
-    dniNumber:     profile.dni_number as string | undefined,
+    initials:             profile.initials as string,
+    location:             (profile.location as string) ?? "",
+    lat:                  profile.lat as number | undefined,
+    lng:                  profile.lng as number | undefined,
+    avatarUrl:            profile.avatar_url as string | undefined,
+    phoneVerified:        profile.phone_verified as boolean,
+    phoneNumber:          profile.phone_number as string | undefined,
+    dniVerified:          dniStatus === "approved",
+    dniNumber:            profile.dni_number as string | undefined,
     dniStatus,
-    dniDocUrl:     profile.dni_doc_url as string | undefined,
-    createdAt:     profile.created_at as string,
+    dniDocUrl:            profile.dni_doc_url as string | undefined,
+    isBusiness:           (profile.is_business as boolean) ?? false,
+    businessPaid:         (profile.business_paid as boolean) ?? false,
+    businessName:         profile.business_name as string | undefined,
+    businessCategory:     profile.business_category as string | undefined,
+    businessHours:        profile.business_hours as string | undefined,
+    businessDesc:         profile.business_desc as string | undefined,
+    businessCuit:         profile.business_cuit as string | undefined,
+    businessCuitVerified: (profile.business_cuit_verified as boolean) ?? false,
+    businessSlug:         profile.business_slug as string | undefined,
+    createdAt:            profile.created_at as string,
   };
 }
 
@@ -67,7 +127,6 @@ function friendlyAuthError(msg: string): string {
     return "Demasiados intentos. Esperá unos minutos antes de volver a intentarlo.";
   if (m.includes("network") || m.includes("fetch"))
     return "Error de conexión. Verificá tu internet e intentá de nuevo.";
-  // Fallback: mostrar el error original en dev, mensaje genérico en prod
   return process.env.NODE_ENV === "development"
     ? `Error: ${msg}`
     : "Ocurrió un error inesperado. Intentá de nuevo.";
@@ -90,7 +149,6 @@ export async function register(
   if (error) return { user: null, error: friendlyAuthError(error.message) };
   if (!data.user) return { user: null, error: "No se pudo crear el usuario." };
 
-  // El trigger crea el perfil automáticamente; esperamos un momento
   await new Promise(r => setTimeout(r, 500));
   const user = await getCurrentUser();
   return { user, error: null };
@@ -134,7 +192,6 @@ export async function uploadAvatar(userId: string, file: File): Promise<string> 
   const path = `${userId}/avatar.${ext}`;
   await supabase.storage.from("avatars").upload(path, file, { upsert: true });
   const { data } = supabase.storage.from("avatars").getPublicUrl(path);
-  // Añadir timestamp para forzar recarga en el browser
   return `${data.publicUrl}?t=${Date.now()}`;
 }
 
@@ -152,20 +209,38 @@ export async function updateUser(
     lat: number;
     lng: number;
     avatarUrl: string;
+    isBusiness: boolean;
+    businessPaid: boolean;
+    businessName: string;
+    businessCategory: string;
+    businessHours: string;
+    businessDesc: string;
+    businessCuit: string;
+    businessCuitVerified: boolean;
+    businessSlug: string;
   }>,
 ): Promise<void> {
   const row: Record<string, unknown> = {};
-  if (updates.phoneVerified !== undefined) row.phone_verified = updates.phoneVerified;
-  if (updates.phoneNumber   !== undefined) row.phone_number   = updates.phoneNumber;
-  if (updates.dniVerified   !== undefined) row.dni_verified   = updates.dniVerified;
-  if (updates.dniNumber     !== undefined) row.dni_number     = updates.dniNumber;
-  if (updates.dniStatus     !== undefined) row.dni_status     = updates.dniStatus;
-  if (updates.dniDocUrl     !== undefined) row.dni_doc_url    = updates.dniDocUrl;
-  if (updates.location      !== undefined) row.location       = updates.location;
-  if (updates.lat           !== undefined) row.lat            = updates.lat;
-  if (updates.lng           !== undefined) row.lng            = updates.lng;
-  if (updates.name          !== undefined) row.name           = updates.name;
-  if (updates.avatarUrl     !== undefined) row.avatar_url     = updates.avatarUrl;
+  if (updates.phoneVerified        !== undefined) row.phone_verified          = updates.phoneVerified;
+  if (updates.phoneNumber          !== undefined) row.phone_number            = updates.phoneNumber;
+  if (updates.dniVerified          !== undefined) row.dni_verified            = updates.dniVerified;
+  if (updates.dniNumber            !== undefined) row.dni_number              = updates.dniNumber;
+  if (updates.dniStatus            !== undefined) row.dni_status              = updates.dniStatus;
+  if (updates.dniDocUrl            !== undefined) row.dni_doc_url             = updates.dniDocUrl;
+  if (updates.location             !== undefined) row.location                = updates.location;
+  if (updates.lat                  !== undefined) row.lat                     = updates.lat;
+  if (updates.lng                  !== undefined) row.lng                     = updates.lng;
+  if (updates.name                 !== undefined) row.name                    = updates.name;
+  if (updates.avatarUrl            !== undefined) row.avatar_url              = updates.avatarUrl;
+  if (updates.isBusiness           !== undefined) row.is_business             = updates.isBusiness;
+  if (updates.businessPaid         !== undefined) row.business_paid           = updates.businessPaid;
+  if (updates.businessName         !== undefined) row.business_name           = updates.businessName;
+  if (updates.businessCategory     !== undefined) row.business_category       = updates.businessCategory;
+  if (updates.businessHours        !== undefined) row.business_hours          = updates.businessHours;
+  if (updates.businessDesc         !== undefined) row.business_desc           = updates.businessDesc;
+  if (updates.businessCuit         !== undefined) row.business_cuit           = updates.businessCuit;
+  if (updates.businessCuitVerified !== undefined) row.business_cuit_verified  = updates.businessCuitVerified;
+  if (updates.businessSlug        !== undefined) row.business_slug           = updates.businessSlug;
   await supabase.from("profiles").update(row).eq("id", userId);
 }
 
@@ -175,11 +250,10 @@ export async function uploadDniDoc(userId: string, file: File): Promise<string> 
   const ext  = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
   const path = `${userId}/frente.${ext}`;
 
-  // Upsert: reemplaza si ya existía un intento previo
   const { error } = await supabase.storage
     .from("dni-docs")
     .upload(path, file, { upsert: true, cacheControl: "3600" });
 
   if (error) throw new Error(error.message);
-  return path; // guardamos el path (no la URL pública — el bucket es privado)
+  return path;
 }

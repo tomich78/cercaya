@@ -1,12 +1,17 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import Navbar from "./components/Navbar";
 import ProductCard from "./components/ProductCard";
 import ProductCardSkeleton from "./components/ProductCardSkeleton";
+import AdSlot from "./components/AdSlot";
 import { products, categories } from "./data";
 import { getLocalProducts, type LocalProduct } from "./lib/storage";
-import { getCurrentUser } from "./lib/auth";
+import { getCurrentUser, type LocalUser } from "./lib/auth";
 import { haversineKm, formatDistance } from "./lib/geo";
+import { createAlert, alertExists } from "./lib/alerts";
+import { usePageTitle } from "./lib/usePageTitle";
 
 type SortOption = "relevante" | "cercano" | "precio_asc" | "precio_desc" | "reciente";
 type Condition  = "Todos" | "Nuevo" | "Usado";
@@ -18,10 +23,19 @@ function parsePrice(str: string): number {
   return parseInt(str.replace(/[$\s.]/g, ""), 10) || 0;
 }
 
-export default function Home() {
+function HomeInner() {
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get("q") ?? "";
   const [activeCategory, setActiveCategory] = useState("Todos");
-  const [search,         setSearch]         = useState("");
+  const [search,         setSearch]         = useState(initialQuery);
+  usePageTitle(search ? `"${search}" — Búsqueda` : undefined);
   const [localProducts,  setLocalProducts]  = useState<LocalProduct[] | null>(null);
+  const [currentUser,    setCurrentUser]    = useState<LocalUser | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Alertas de búsqueda
+  const [alertSaved,     setAlertSaved]     = useState(false);  // feedback "¡guardado!"
+  const [alertChecked,   setAlertChecked]   = useState<string>("");  // query ya verificada
 
   // Filtros
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -35,6 +49,11 @@ export default function Home() {
   const [userLat, setUserLat] = useState<number | null>(null);
   const [userLng, setUserLng] = useState<number | null>(null);
 
+  // Prompt de geolocalización cuando browser y perfil difieren
+  const [geoPrompt, setGeoPrompt] = useState<{
+    browserLat: number; browserLng: number;
+  } | null>(null);
+
   // Paginación
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const sentinelRef    = useRef<HTMLDivElement>(null);
@@ -44,10 +63,51 @@ export default function Home() {
   // Ref con el total filtrado para que el observer no incremente de más
   const filteredTotal  = useRef(0);
 
+  // Detectar primer uso (solo en cliente, evita SSR mismatch)
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem("estamosCerca_onboarded")) {
+        setShowOnboarding(true);
+      }
+    } catch { /* localStorage bloqueado */ }
+  }, []);
+
+  function dismissOnboarding() {
+    setShowOnboarding(false);
+    try { localStorage.setItem("estamosCerca_onboarded", "1"); } catch { /* */ }
+  }
+
   useEffect(() => {
     getLocalProducts().then(setLocalProducts);
     getCurrentUser().then(u => {
+      setCurrentUser(u);
       if (u?.lat && u?.lng) { setUserLat(u.lat); setUserLng(u.lng); }
+
+      // Pedir geolocalización del browser en segundo plano
+      if (!navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const bLat = pos.coords.latitude;
+          const bLng = pos.coords.longitude;
+
+          if (!u?.lat || !u?.lng) {
+            // Sin ubicación en perfil → usar browser directamente
+            setUserLat(bLat);
+            setUserLng(bLng);
+            return;
+          }
+
+          // Comparar con ubicación del perfil
+          const diffKm = haversineKm(bLat, bLng, u.lat, u.lng);
+          if (diffKm > 20) {
+            // Difieren más de 20 km → preguntar al usuario
+            setGeoPrompt({ browserLat: bLat, browserLng: bLng });
+          }
+          // Si están cerca, el perfil ya está cargado, no hace falta nada
+        },
+        () => { /* permiso denegado o error — no hacer nada */ },
+        { timeout: 6000, maximumAge: 300000 },
+      );
     });
   }, []);
 
@@ -57,6 +117,9 @@ export default function Home() {
     setVisibleCount(PAGE_SIZE);
     if (blockTimer.current) clearTimeout(blockTimer.current);
     blockTimer.current = setTimeout(() => { blockObserver.current = false; }, 200);
+    // Resetear estado de alerta cuando cambia la búsqueda
+    setAlertSaved(false);
+    setAlertChecked("");
   }, [activeCategory, search, priceMin, priceMax, condition, sortBy, maxDist]);
 
   // IntersectionObserver para cargar más
@@ -115,7 +178,11 @@ export default function Home() {
   const filtered = allProducts
     .filter(p => {
       const matchCat    = activeCategory === "Todos" || p.category === activeCategory;
-      const matchSearch = p.title.toLowerCase().includes(search.toLowerCase());
+      const q           = search.toLowerCase();
+      const matchSearch = !q || p.title.toLowerCase().includes(q)
+        || p.description?.toLowerCase().includes(q)
+        || p.category.toLowerCase().includes(q)
+        || p.location.toLowerCase().includes(q);
       const price       = parsePrice(p.price);
       const matchMin    = !priceMin || price >= parseInt(priceMin.replace(/\D/g, ""));
       const matchMax    = !priceMax || price <= parseInt(priceMax.replace(/\D/g, ""));
@@ -143,6 +210,20 @@ export default function Home() {
     setPriceMin(""); setPriceMax(""); setCondition("Todos"); setSortBy("relevante"); setMaxDist("todos");
   }
 
+  async function handleSaveAlert() {
+    const q = search.trim();
+    if (!q) return;
+    if (!currentUser) { window.location.href = `/login?redirect=/`; return; }
+    // Verificar si ya existe
+    if (alertChecked !== q) {
+      const exists = await alertExists(currentUser.id, q, activeCategory !== "Todos" ? activeCategory : null);
+      setAlertChecked(q);
+      if (exists) { setAlertSaved(true); return; }
+    }
+    await createAlert(currentUser.id, q, activeCategory !== "Todos" ? activeCategory : null);
+    setAlertSaved(true);
+  }
+
   // Sincronizar ref con el total filtrado actual
   filteredTotal.current = filtered.length;
 
@@ -161,6 +242,51 @@ export default function Home() {
     <div>
       <Navbar />
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 1.5rem" }}>
+
+        {/* Banner: ubicación del browser difiere del perfil */}
+        {geoPrompt && (
+          <div style={{
+            background: "var(--surface)", border: "1px solid var(--border)",
+            borderRadius: 8, padding: "13px 16px", marginBottom: 14,
+            display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap",
+          }}>
+            <span style={{ fontSize: 18, flexShrink: 0 }}>📍</span>
+            <div style={{ flex: 1, minWidth: 180 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>
+                Tu ubicación actual es distinta a la de tu perfil
+              </div>
+              <div style={{ fontSize: 12, color: "var(--text-3)" }}>
+                ¿Querés ver productos cerca de donde estás ahora?
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+              <button
+                onClick={() => {
+                  setUserLat(geoPrompt.browserLat);
+                  setUserLng(geoPrompt.browserLng);
+                  setGeoPrompt(null);
+                }}
+                style={{
+                  fontSize: 12, fontWeight: 600, padding: "6px 12px",
+                  background: "var(--green)", color: "#fff",
+                  border: "none", borderRadius: 6, cursor: "pointer",
+                }}
+              >
+                Usar ubicación actual
+              </button>
+              <button
+                onClick={() => setGeoPrompt(null)}
+                style={{
+                  fontSize: 12, padding: "6px 12px",
+                  background: "none", color: "var(--text-3)",
+                  border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer",
+                }}
+              >
+                Usar mi perfil
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Hero */}
         <div style={{
@@ -223,6 +349,98 @@ export default function Home() {
             </button>
           ))}
         </div>
+
+        {/* Onboarding banner — primer uso */}
+        {showOnboarding && (
+          <div style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: 10,
+            padding: "20px 20px 18px",
+            marginBottom: 16,
+            position: "relative",
+            animation: "onboarding-in 0.3s ease-out both",
+          }}>
+            <style>{`
+              @keyframes onboarding-in {
+                from { opacity: 0; transform: translateY(-8px); }
+                to   { opacity: 1; transform: translateY(0); }
+              }
+            `}</style>
+
+            {/* Cerrar */}
+            <button
+              onClick={dismissOnboarding}
+              title="Cerrar"
+              style={{
+                position: "absolute", top: 12, right: 12,
+                width: 26, height: 26, borderRadius: "50%",
+                background: "var(--bg)", border: "1px solid var(--border)",
+                cursor: "pointer", display: "flex", alignItems: "center",
+                justifyContent: "center", color: "var(--text-3)", fontSize: 16,
+                lineHeight: 1, padding: 0,
+              }}
+            >
+              ×
+            </button>
+
+            {/* Encabezado */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: -0.4, marginBottom: 4 }}>
+                👋 ¡Bienvenido a EstamosCerca!
+              </div>
+              <div style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.5 }}>
+                La forma más fácil de comprar y vender en tu barrio.
+                Sin intermediarios, sin envíos complicados.
+              </div>
+            </div>
+
+            {/* Feature chips */}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+              {[
+                { icon: "🔍", label: "Explorá productos cerca tuyo" },
+                { icon: "📦", label: "Publicá gratis en segundos" },
+                { icon: "💬", label: "Contactá directo al vendedor" },
+              ].map(f => (
+                <div key={f.label} style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  background: "var(--bg)", border: "1px solid var(--border)",
+                  borderRadius: 999, padding: "5px 12px",
+                  fontSize: 12, color: "var(--text-2)",
+                }}>
+                  <span style={{ fontSize: 14 }}>{f.icon}</span>
+                  {f.label}
+                </div>
+              ))}
+            </div>
+
+            {/* CTAs */}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                onClick={dismissOnboarding}
+                style={{
+                  padding: "8px 18px", borderRadius: 6, border: "none",
+                  background: "var(--green)", color: "#fff",
+                  fontSize: 13, fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                Explorar publicaciones
+              </button>
+              <Link
+                href="/publicar"
+                onClick={dismissOnboarding}
+                style={{
+                  padding: "8px 18px", borderRadius: 6,
+                  border: "1px solid var(--border)",
+                  background: "var(--surface)", color: "var(--text-2)",
+                  fontSize: 13, fontWeight: 500, display: "inline-block",
+                }}
+              >
+                + Publicar algo
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* Barra de filtros */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
@@ -384,25 +602,63 @@ export default function Home() {
         )}
 
         {/* Results header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
           <div style={{ fontSize: 13, color: "var(--text-2)", fontWeight: 500 }}>
             {loading ? "Cargando…" : `${filtered.length} publicaciones`}
           </div>
-          {activeFilterCount > 0 && !loading && (
-            <button
-              onClick={clearFilters}
-              style={{ fontSize: 12, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}
-            >
-              Limpiar filtros
-            </button>
-          )}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {activeFilterCount > 0 && !loading && (
+              <button
+                onClick={clearFilters}
+                style={{ fontSize: 12, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}
+              >
+                Limpiar filtros
+              </button>
+            )}
+            {/* Botón de alerta: visible sólo cuando hay búsqueda activa */}
+            {search.trim() && !loading && (
+              alertSaved ? (
+                <div style={{
+                  display: "inline-flex", alignItems: "center", gap: 5,
+                  fontSize: 12, fontWeight: 600, color: "var(--green)",
+                  background: "var(--green-subtle)", padding: "5px 11px",
+                  borderRadius: 6, border: "1px solid #c5e8dc",
+                }}>
+                  🔔 Alerta guardada
+                </div>
+              ) : (
+                <button
+                  onClick={handleSaveAlert}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 5,
+                    fontSize: 12, fontWeight: 500, color: "var(--text-2)",
+                    background: "var(--surface)", padding: "5px 11px",
+                    borderRadius: 6, border: "1px solid var(--border)",
+                    cursor: "pointer", transition: "all 0.12s",
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--green)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--green)"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--text-2)"; }}
+                  title="Te avisaremos cuando aparezca un producto que coincida con esta búsqueda"
+                >
+                  🔔 Avisame cuando aparezca
+                </button>
+              )
+            )}
+          </div>
         </div>
 
-        {/* Grid */}
+        {/* Grid con slots de publicidad cada 4 productos */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: 12 }}>
           {loading
             ? Array.from({ length: PAGE_SIZE }).map((_, i) => <ProductCardSkeleton key={i} />)
-            : visibleProducts.map(({ _km: _ignored, ...p }) => <ProductCard key={p.id} product={p} />)
+            : visibleProducts.flatMap(({ _km: _ignored, ...p }, idx) => {
+                const items = [<ProductCard key={p.id} product={p} />];
+                // Slot de publicidad cada 4 productos
+                if ((idx + 1) % 4 === 0) {
+                  items.push(<AdSlot key={`ad-${idx}`} />);
+                }
+                return items;
+              })
           }
         </div>
 
@@ -410,9 +666,34 @@ export default function Home() {
         {!loading && filtered.length === 0 && (
           <div style={{ textAlign: "center", padding: "5rem 0", color: "var(--text-3)" }}>
             <div style={{ fontSize: 13, marginBottom: 4, fontWeight: 500 }}>Sin resultados</div>
-            <div style={{ fontSize: 12 }}>
+            <div style={{ fontSize: 12, marginBottom: search.trim() ? 16 : 0 }}>
               {activeFilterCount > 0 ? "Probá ajustando los filtros." : "Intentá con otro término o categoría."}
             </div>
+            {search.trim() && (
+              alertSaved ? (
+                <div style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  fontSize: 13, fontWeight: 600, color: "var(--green)",
+                  background: "var(--green-subtle)", padding: "8px 16px",
+                  borderRadius: 8, border: "1px solid #c5e8dc",
+                }}>
+                  🔔 ¡Alerta guardada! Te avisamos cuando aparezca algo.
+                </div>
+              ) : (
+                <button
+                  onClick={handleSaveAlert}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    fontSize: 13, fontWeight: 500,
+                    background: "var(--surface)", color: "var(--text-2)",
+                    border: "1px solid var(--border)", borderRadius: 8,
+                    padding: "9px 18px", cursor: "pointer",
+                  }}
+                >
+                  🔔 Avisame cuando aparezca &quot;{search.trim()}&quot;
+                </button>
+              )
+            )}
           </div>
         )}
 
@@ -434,5 +715,13 @@ export default function Home() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div><Navbar /></div>}>
+      <HomeInner />
+    </Suspense>
   );
 }

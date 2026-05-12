@@ -62,6 +62,7 @@ export default function Navbar() {
   }
 
   return (
+    <>
     <nav style={{
       background: "var(--surface)",
       borderBottom: "1px solid var(--border)",
@@ -75,7 +76,7 @@ export default function Navbar() {
       zIndex: 100,
     }}>
       <Link href="/" style={{ fontSize: 17, fontWeight: 600, letterSpacing: -0.5, color: "var(--text)" }}>
-        cerca<span style={{ color: "var(--green)" }}>ya</span>
+        estamos<span style={{ color: "var(--green)" }}>cerca</span>
       </Link>
 
       <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
@@ -228,6 +229,20 @@ export default function Navbar() {
                   Mis guardados
                 </Link>
                 <Link
+                  href="/alertas"
+                  onClick={() => setOpen(false)}
+                  style={{
+                    display: "block",
+                    padding: "7px 14px",
+                    fontSize: 13, color: "var(--text-2)",
+                    transition: "background 0.1s",
+                  }}
+                  onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => (e.currentTarget.style.background = "var(--bg)")}
+                  onMouseLeave={(e: React.MouseEvent<HTMLAnchorElement>) => (e.currentTarget.style.background = "transparent")}
+                >
+                  🔔 Alertas
+                </Link>
+                <Link
                   href="/mensajes"
                   onClick={() => setOpen(false)}
                   style={{
@@ -281,5 +296,102 @@ export default function Navbar() {
         )}
       </div>
     </nav>
+
+    {/* ── Bottom nav mobile ─────────────────────────────────────── */}
+    <nav className="mobile-bottom-nav" style={{
+      display: "none", // CSS lo muestra en mobile
+      position: "fixed",
+      bottom: 0, left: 0, right: 0,
+      height: 60,
+      background: "var(--surface)",
+      borderTop: "1px solid var(--border)",
+      zIndex: 100,
+      alignItems: "center",
+      justifyContent: "space-around",
+      padding: "0 4px",
+    }}>
+      {/* Inicio */}
+      <Link href="/" style={{
+        display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+        color: "var(--text-2)", fontSize: 10, fontWeight: 500, padding: "6px 12px",
+      }}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        Inicio
+      </Link>
+
+      {/* Mensajes */}
+      <Link href={user ? "/mensajes" : "/login?redirect=/mensajes"} style={{
+        display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+        color: "var(--text-2)", fontSize: 10, fontWeight: 500, padding: "6px 12px",
+        position: "relative",
+      }}>
+        <span style={{ position: "relative", display: "inline-flex" }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          {unread > 0 && (
+            <span style={{
+              position: "absolute", top: -4, right: -6,
+              background: "#ef4444", color: "#fff",
+              borderRadius: "50%",
+              width: 15, height: 15,
+              fontSize: 9, fontWeight: 700,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              lineHeight: 1,
+            }}>
+              {unread > 9 ? "9+" : unread}
+            </span>
+          )}
+        </span>
+        Mensajes
+      </Link>
+
+      {/* Publicar */}
+      <Link href={user ? "/publicar" : "/login?redirect=/publicar"} style={{
+        display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+        padding: "6px 12px",
+      }}>
+        <span style={{
+          width: 42, height: 42, borderRadius: "50%",
+          background: "var(--green)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          marginTop: -18,
+          boxShadow: "0 2px 10px rgba(15,110,86,0.35)",
+          border: "3px solid var(--surface)",
+        }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </span>
+      </Link>
+
+      {/* Guardados */}
+      <Link href={user ? "/guardados" : "/login?redirect=/guardados"} style={{
+        display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+        color: "var(--text-2)", fontSize: 10, fontWeight: 500, padding: "6px 12px",
+      }}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+        </svg>
+        Guardados
+      </Link>
+
+      {/* Perfil */}
+      <Link href={user ? "/perfil" : "/login"} style={{
+        display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+        color: "var(--text-2)", fontSize: 10, fontWeight: 500, padding: "6px 12px",
+      }}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        Perfil
+      </Link>
+    </nav>
+    </>
   );
 }

@@ -19,7 +19,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Leer preferencia guardada o detectar sistema
-    const saved = localStorage.getItem("cercaya-theme") as Theme | null;
+    const saved = localStorage.getItem("estamosCerca-theme") as Theme | null;
     if (saved) {
       setTheme(saved);
       document.documentElement.setAttribute("data-theme", saved);
@@ -35,7 +35,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const next: Theme = theme === "dark" ? "light" : "dark";
     setTheme(next);
     document.documentElement.setAttribute("data-theme", next);
-    localStorage.setItem("cercaya-theme", next);
+    localStorage.setItem("estamosCerca-theme", next);
   }
 
   return (

@@ -9,25 +9,38 @@ import { getCurrentUser, type LocalUser } from "../../lib/auth";
 import { categories } from "../../data";
 import { useToast } from "../../components/ToastProvider";
 import LocationInput from "../../components/LocationInput";
+import { usePageTitle } from "../../lib/usePageTitle";
 
 const MAX_IMAGES = 5;
 
 const categoryColors: Record<string, string> = {
-  "Electrónica": "#dbeafe",
-  "Ropa":        "#fce7f3",
-  "Hogar":       "#d1fae5",
-  "Arte":        "#fef3c7",
-  "Deportes":    "#e0f2fe",
-  "Vehículos":   "#f3e8ff",
+  "Electrónica":  "#dbeafe",
+  "Ropa":         "#fce7f3",
+  "Hogar":        "#d1fae5",
+  "Arte":         "#fef3c7",
+  "Deportes":     "#e0f2fe",
+  "Vehículos":    "#f3e8ff",
+  "Herramientas": "#fed7aa",
+  "Juguetes":     "#fde68a",
+  "Libros":       "#c7d2fe",
+  "Mascotas":     "#fecdd3",
+  "Bebés":        "#bae6fd",
+  "Jardín":       "#bbf7d0",
 };
 
 const categoryEmojis: Record<string, string[]> = {
-  "Electrónica": ["💻", "📱", "🖥️", "⌨️", "🖱️", "🎧", "📷", "🎮", "📺", "🔋"],
-  "Ropa":        ["👗", "👟", "👔", "🧥", "👜", "🕶️", "👒", "🧣", "👞", "🧤"],
-  "Hogar":       ["🛋️", "🪑", "🛏️", "🪴", "🍳", "🪞", "🛁", "🖼️", "💡", "🧹"],
-  "Arte":        ["🎨", "📚", "🎵", "🎸", "🎹", "📷", "✏️", "🎭", "🎬", "🧵"],
-  "Deportes":    ["🚲", "⚽", "🎾", "🏋️", "🛹", "🏊", "⛷️", "🥊", "🎯", "🏄"],
-  "Vehículos":   ["🚗", "🏍️", "🚐", "🚚", "🛵", "🚙", "🏎️", "🚕", "🛻", "🚌"],
+  "Electrónica":  ["💻", "📱", "🖥️", "⌨️", "🖱️", "🎧", "📷", "🎮", "📺", "🔋"],
+  "Ropa":         ["👗", "👟", "👔", "🧥", "👜", "🕶️", "👒", "🧣", "👞", "🧤"],
+  "Hogar":        ["🛋️", "🪑", "🛏️", "🪴", "🍳", "🪞", "🛁", "🖼️", "💡", "🧹"],
+  "Arte":         ["🎨", "📚", "🎵", "🎸", "🎹", "📷", "✏️", "🎭", "🎬", "🧵"],
+  "Deportes":     ["🚲", "⚽", "🎾", "🏋️", "🛹", "🏊", "⛷️", "🥊", "🎯", "🏄"],
+  "Vehículos":    ["🚗", "🏍️", "🚐", "🚚", "🛵", "🚙", "🏎️", "🚕", "🛻", "🚌"],
+  "Herramientas": ["🔧", "🪛", "🔨", "🪚", "🔩", "⚙️", "🪝", "🔑", "🗜️", "🔌"],
+  "Juguetes":     ["🧸", "🎮", "🎲", "🪆", "🎯", "🪀", "🧩", "🎠", "🪁", "🎪"],
+  "Libros":       ["📚", "📖", "📕", "📗", "📘", "📙", "📜", "📰", "🗒️", "✏️"],
+  "Mascotas":     ["🐶", "🐱", "🐠", "🐦", "🐹", "🦜", "🐰", "🐢", "🐾", "🦮"],
+  "Bebés":        ["👶", "🍼", "🧸", "🪆", "🛒", "🧷", "🎠", "🪃", "🧦", "👕"],
+  "Jardín":       ["🌱", "🌸", "🪴", "🌻", "🌿", "🍃", "🌾", "🌺", "🌷", "🪻"],
 };
 
 function formatPrice(raw: string): string {
@@ -79,6 +92,7 @@ function rawFromPrice(price: string): string {
 
 export default function EditarPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  usePageTitle("Editar publicación");
   const router  = useRouter();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);

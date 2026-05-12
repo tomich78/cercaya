@@ -2,7 +2,7 @@ import { supabase } from "./supabase";
 
 export interface Conversation {
   id: number;
-  productId: number;
+  productId: number | null;
   productTitle: string;
   productEmoji: string;
   productBg: string;
@@ -29,7 +29,7 @@ export interface Message {
 function rowToConv(r: Record<string, unknown>): Conversation {
   return {
     id:              r.id as number,
-    productId:       r.product_id as number,
+    productId:       r.product_id as number | null,
     productTitle:    r.product_title as string,
     productEmoji:    r.product_emoji as string,
     productBg:       r.product_bg as string,
@@ -80,20 +80,27 @@ export async function getOrCreateConversation(
   data: Omit<Conversation, "id" | "lastMessage" | "lastMessageAt" | "createdAt">,
 ): Promise<Conversation> {
   // Buscar conversación existente
-  const { data: existing } = await supabase
+  let query = supabase
     .from("conversations")
     .select("*")
-    .eq("product_id", data.productId)
     .eq("buyer_id", data.buyerId)
-    .maybeSingle();
+    .eq("seller_id", data.sellerId);
 
+  // Si hay producto específico buscamos por producto; si no, buscamos consulta general
+  if (data.productId != null) {
+    query = query.eq("product_id", data.productId);
+  } else {
+    query = query.is("product_id", null);
+  }
+
+  const { data: existing } = await query.maybeSingle();
   if (existing) return rowToConv(existing);
 
   // Crear nueva
   const { data: created, error } = await supabase
     .from("conversations")
     .insert({
-      product_id:      data.productId,
+      product_id:      data.productId ?? null,
       product_title:   data.productTitle,
       product_emoji:   data.productEmoji,
       product_bg:      data.productBg,

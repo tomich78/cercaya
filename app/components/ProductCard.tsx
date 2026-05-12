@@ -16,10 +16,15 @@ interface Product {
   bg: string;
   verified: boolean;
   images?: string[];
+  condition?: "Nuevo" | "Usado";
+  featured?: boolean;
+  sellerIsBusiness?: boolean;
+  sellerCuitVerified?: boolean;
+  sellerBusinessSlug?: string;
 }
 
 export default function ProductCard({ product }: { product: Product }) {
-  const router   = useRouter();
+  const router    = useRouter();
   const { toast } = useToast();
   const [fav, setFav] = useState(false);
 
@@ -40,28 +45,47 @@ export default function ProductCard({ product }: { product: Product }) {
   }
 
   return (
-    <Link href={`/producto/${product.id}`}>
-      <div
-        style={{
-          background: "var(--surface)",
-          border: "1px solid var(--border)",
-          borderRadius: 8,
-          overflow: "hidden",
-          cursor: "pointer",
-          transition: "border-color 0.12s",
-          position: "relative",
-        }}
-        onMouseEnter={e => {
-          (e.currentTarget as HTMLDivElement).style.borderColor = "#bfbfbb";
-        }}
-        onMouseLeave={e => {
-          (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border)";
-        }}
-      >
+    <div
+      onClick={() => router.push(`/producto/${product.id}`)}
+      style={{
+        background: "var(--surface)",
+        border: `1px solid ${product.featured ? "#f59e0b" : "var(--border)"}`,
+        borderRadius: 8,
+        overflow: "hidden",
+        cursor: "pointer",
+        transition: "border-color 0.12s, box-shadow 0.12s",
+        position: "relative",
+        boxShadow: product.featured ? "0 0 0 1px #fde68a" : "none",
+      }}
+      onMouseEnter={e => {
+        const el = e.currentTarget as HTMLDivElement;
+        el.style.borderColor = product.featured ? "#d97706" : "#bfbfbb";
+        if (!product.featured) el.style.boxShadow = "none";
+      }}
+      onMouseLeave={e => {
+        const el = e.currentTarget as HTMLDivElement;
+        el.style.borderColor = product.featured ? "#f59e0b" : "var(--border)";
+        el.style.boxShadow   = product.featured ? "0 0 0 1px #fde68a" : "none";
+      }}
+    >
+        {/* Ribbon destacado */}
+        {product.featured && (
+          <div style={{
+            background: "linear-gradient(90deg, #f59e0b, #d97706)",
+            color: "#fff",
+            fontSize: 10, fontWeight: 700, letterSpacing: 0.6,
+            textTransform: "uppercase" as const,
+            padding: "3px 10px",
+            display: "flex", alignItems: "center", gap: 5,
+          }}>
+            <span>⭐</span> Destacado
+          </div>
+        )}
+
         {/* Imagen */}
         <div style={{
           background: product.bg,
-          height: 128,
+          height: product.featured ? 116 : 128,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -78,6 +102,20 @@ export default function ProductCard({ product }: { product: Product }) {
             />
           ) : (
             product.emoji
+          )}
+
+          {/* Badge condición */}
+          {product.condition && (
+            <div style={{
+              position: "absolute", top: 8, left: 8,
+              fontSize: 10, fontWeight: 700,
+              letterSpacing: 0.3, textTransform: "uppercase" as const,
+              padding: "2px 7px", borderRadius: 4,
+              background: product.condition === "Nuevo" ? "var(--green)" : "rgba(0,0,0,0.52)",
+              color: "#fff",
+            }}>
+              {product.condition}
+            </div>
           )}
 
           {/* Botón corazón */}
@@ -113,34 +151,56 @@ export default function ProductCard({ product }: { product: Product }) {
         </div>
 
         {/* Info */}
-        <div style={{ padding: "11px 13px 13px" }}>
-          <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 5, color: "var(--text)", lineHeight: 1.35 }}>
+        <div style={{ padding: "10px 13px 12px" }}>
+          <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4, color: "var(--text)", lineHeight: 1.35 }}>
             {product.title}
           </div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: "var(--green)", marginBottom: 7, letterSpacing: -0.3 }}>
+          <div style={{ fontSize: 15, fontWeight: 600, color: "var(--green)", marginBottom: 6, letterSpacing: -0.3 }}>
             {product.price}
           </div>
-          <div style={{ fontSize: 11, color: "var(--text-3)", display: "flex", justifyContent: "space-between" }}>
+          <div style={{ fontSize: 11, color: "var(--text-3)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span>{product.location}</span>
             <span style={{ color: "var(--green)", fontWeight: 500 }}>{product.distance}</span>
           </div>
-          {product.verified && (
-            <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
-              <span style={{
-                fontSize: 10,
-                background: "var(--green-subtle)",
-                color: "var(--green)",
-                padding: "2px 7px",
-                borderRadius: 3,
-                fontWeight: 600,
-                textTransform: "uppercase" as const,
-                letterSpacing: 0.3,
-                display: "inline-block",
-              }}>Verificado</span>
+
+          {/* Footer: verificado + negocio */}
+          {(product.verified || product.sellerIsBusiness) && (
+            <div style={{ marginTop: 8, paddingTop: 7, borderTop: "1px solid var(--border)", display: "flex", gap: 5, flexWrap: "wrap" }}>
+              {product.verified && (
+                <span style={{
+                  fontSize: 10, background: "var(--green-subtle)", color: "var(--green)",
+                  padding: "2px 7px", borderRadius: 3, fontWeight: 600,
+                  textTransform: "uppercase" as const, letterSpacing: 0.3,
+                }}>Verificado</span>
+              )}
+              {product.sellerIsBusiness && (
+                product.sellerBusinessSlug ? (
+                  <Link
+                    href={`/negocio/${product.sellerBusinessSlug}`}
+                    onClick={e => e.stopPropagation()}
+                    style={{
+                      fontSize: 10, fontWeight: 700, letterSpacing: 0.3,
+                      textTransform: "uppercase" as const, padding: "2px 7px", borderRadius: 3,
+                      background: product.sellerCuitVerified ? "var(--green)" : "#1d4ed8",
+                      color: "#fff", textDecoration: "none",
+                    }}
+                  >
+                    {product.sellerCuitVerified ? "✓ Negocio →" : "🏪 Negocio →"}
+                  </Link>
+                ) : (
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, letterSpacing: 0.3,
+                    textTransform: "uppercase" as const, padding: "2px 7px", borderRadius: 3,
+                    background: product.sellerCuitVerified ? "var(--green)" : "#1d4ed8",
+                    color: "#fff",
+                  }}>
+                    {product.sellerCuitVerified ? "✓ Negocio" : "🏪 Negocio"}
+                  </span>
+                )
+              )}
             </div>
           )}
         </div>
-      </div>
-    </Link>
+    </div>
   );
 }

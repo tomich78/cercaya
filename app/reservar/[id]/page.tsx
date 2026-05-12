@@ -155,11 +155,14 @@ export default function ReservarPage({ params }: { params: Promise<{ id: string 
       // Obtener info del vendedor desde profiles
       const { data: sellerProfile } = await supabase
         .from("profiles")
-        .select("name, initials")
+        .select("name, initials, is_business, business_name")
         .eq("id", product.userId)
         .single();
 
-      const sellerName     = (sellerProfile?.name     as string | null) ?? "Vendedor";
+      const isBusiness = (sellerProfile?.is_business as boolean | null) ?? false;
+      const businessName = (sellerProfile?.business_name as string | null) ?? null;
+      // Usar nombre de negocio si está activo
+      const sellerName     = (isBusiness && businessName) ? businessName : ((sellerProfile?.name as string | null) ?? "Vendedor");
       const sellerInitials = (sellerProfile?.initials as string | null) ?? "VV";
 
       const conv = await getOrCreateConversation({
@@ -177,7 +180,7 @@ export default function ReservarPage({ params }: { params: Promise<{ id: string 
 
       // Guardar borrador en sessionStorage para que el chat lo lea
       const draft = buildMessage(product, user, payMethod, shipMethod, address);
-      sessionStorage.setItem(`cercaya_draft_${conv.id}`, draft);
+      sessionStorage.setItem(`estamosCerca_draft_${conv.id}`, draft);
 
       router.push(`/mensajes/${conv.id}`);
     } catch {

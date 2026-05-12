@@ -72,7 +72,7 @@ function LoginForm() {
               Iniciar sesión
             </h1>
             <p style={{ fontSize: 13, color: "var(--text-3)", margin: 0 }}>
-              Bienvenido de vuelta a CercaYa.
+              Bienvenido de vuelta a EstamosCerca.
             </p>
           </div>
 

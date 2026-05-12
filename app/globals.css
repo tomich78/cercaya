@@ -81,6 +81,28 @@ a { text-decoration: none; color: inherit; }
   height: 100dvh;
 }
 
+/* Scrollbar estética del chat */
+.chat-messages::-webkit-scrollbar        { width: 4px; }
+.chat-messages::-webkit-scrollbar-track  { background: transparent; }
+.chat-messages::-webkit-scrollbar-thumb  {
+  background: var(--border);
+  border-radius: 999px;
+}
+.chat-messages::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+
+/* ── Transición de página ───────────────────────────────────── */
+@keyframes page-fade-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.page-transition {
+  animation: page-fade-in 0.2s ease-out both;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
 /* ── Skeleton shimmer ───────────────────────────────────────── */
 @keyframes shimmer {
   0%   { background-position: -600px 0; }
@@ -145,8 +167,19 @@ a { text-decoration: none; color: inherit; }
 }
 
 @media (max-width: 768px) {
+  /* Bottom nav — mostrar en mobile */
+  .mobile-bottom-nav {
+    display: flex !important;
+  }
+
+  /* Espaciado inferior para que el contenido no quede detrás del bottom nav */
+  body {
+    padding-bottom: 60px;
+  }
+
+  /* Toast sube sobre el bottom nav */
   .toast-stack {
-    bottom: 16px;
+    bottom: 72px;
     width: calc(100% - 2rem);
   }
   .toast {
@@ -154,9 +187,7 @@ a { text-decoration: none; color: inherit; }
     width: 100%;
     box-sizing: border-box;
   }
-}
 
-@media (max-width: 768px) {
   /* Colapsar grillas a 1 columna */
   .two-col-product,
   .two-col-publish {
@@ -178,5 +209,35 @@ a { text-decoration: none; color: inherit; }
   .page-body {
     padding-left: 1rem !important;
     padding-right: 1rem !important;
+  }
+
+  /* Formulario de contacto: colapsar a 1 columna */
+  .contact-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Nosotros: grids responsive */
+  .about-grid,
+  .values-grid {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 16px !important;
+  }
+  .stats-grid > div {
+    border-right: none !important;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+    padding-bottom: 16px !important;
+  }
+  .stats-grid > div:nth-child(even) {
+    border-bottom: none;
+  }
+
+  /* Publicidad: grids responsive */
+  .plans-grid,
+  .howto-grid {
+    grid-template-columns: 1fr !important;
   }
 }

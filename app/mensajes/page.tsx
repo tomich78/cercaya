@@ -5,6 +5,7 @@ import Link from "next/link";
 import Navbar from "../components/Navbar";
 import { getCurrentUser, type LocalUser } from "../lib/auth";
 import { getUserConversations, isConversationUnread, type Conversation } from "../lib/messages";
+import { usePageTitle } from "../lib/usePageTitle";
 
 function timeAgo(iso: string): string {
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -16,6 +17,7 @@ function timeAgo(iso: string): string {
 }
 
 export default function MensajesPage() {
+  usePageTitle("Mensajes");
   const router = useRouter();
   const [user, setUser]   = useState<LocalUser | null>(null);
   const [convs, setConvs] = useState<Conversation[]>([]);
@@ -43,7 +45,30 @@ export default function MensajesPage() {
     })();
   }, [router]);
 
-  if (!ready) return <div><Navbar /></div>;
+  if (!ready) return (
+    <div>
+      <Navbar />
+      <div style={{ maxWidth: 680, margin: "0 auto", padding: "2rem 1.5rem" }}>
+        <div className="skeleton" style={{ width: 100, height: 20, borderRadius: 4, marginBottom: 20 }} />
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
+          {[1,2,3].map((i, idx) => (
+            <div key={i} style={{
+              display: "flex", alignItems: "center", gap: 12, padding: "14px 16px",
+              borderBottom: idx < 2 ? "1px solid var(--border)" : "none",
+            }}>
+              <div className="skeleton" style={{ width: 44, height: 44, borderRadius: 8, flexShrink: 0 }} />
+              <div style={{ flex: 1 }}>
+                <div className="skeleton" style={{ width: "40%", height: 13, borderRadius: 3, marginBottom: 6 }} />
+                <div className="skeleton" style={{ width: "60%", height: 12, borderRadius: 3, marginBottom: 5 }} />
+                <div className="skeleton" style={{ width: "80%", height: 12, borderRadius: 3 }} />
+              </div>
+              <div className="skeleton" style={{ width: 32, height: 32, borderRadius: "50%", flexShrink: 0 }} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div>

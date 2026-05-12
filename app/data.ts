@@ -60,4 +60,18 @@ export const sellers = [
   },
 ];
 
-export const categories = ["Todos", "Electrónica", "Ropa", "Hogar", "Deportes", "Arte", "Vehículos"];
+export const categories = [
+  "Todos",
+  "Electrónica",
+  "Ropa",
+  "Hogar",
+  "Deportes",
+  "Vehículos",
+  "Herramientas",
+  "Juguetes",
+  "Libros",
+  "Mascotas",
+  "Bebés",
+  "Jardín",
+  "Arte",
+];

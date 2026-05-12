@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "../../components/Navbar";
 import { sellers, products } from "../../data";
-import { getCurrentUser, type LocalUser } from "../../lib/auth";
+import { getCurrentUser, getDisplayName, type LocalUser } from "../../lib/auth";
+import { usePageTitle } from "../../lib/usePageTitle";
 import { supabase } from "../../lib/supabase";
 import {
   getReviewsForSeller,
@@ -54,6 +55,12 @@ interface ProfileSeller {
   phoneVerified: boolean;
   dniVerified: boolean;
   memberSince: string;
+  isBusiness: boolean;
+  businessName?: string;
+  businessCategory?: string;
+  businessHours?: string;
+  businessDesc?: string;
+  businessCuitVerified?: boolean;
 }
 
 export default function SellerPage({ params }: { params: Promise<{ id: string }> }) {
@@ -67,6 +74,11 @@ export default function SellerPage({ params }: { params: Promise<{ id: string }>
 
   const [profileSeller, setProfileSeller] = useState<ProfileSeller | null>(null);
   const [realProducts, setRealProducts] = useState<LocalProduct[]>([]);
+  // Título dinámico con nombre del vendedor/negocio
+  const titleSellerName = profileSeller
+    ? (profileSeller.isBusiness && profileSeller.businessName ? profileSeller.businessName : profileSeller.name)
+    : mockSeller?.name;
+  usePageTitle(titleSellerName ? `Perfil de ${titleSellerName}` : undefined);
   const [localReviews, setLocalReviews] = useState<Review[]>([]);
   const [alreadyReviewed, setAlreadyReviewed] = useState(false);
   const [currentUser, setCurrentUser]   = useState<LocalUser | null>(null);
@@ -92,14 +104,20 @@ export default function SellerPage({ params }: { params: Promise<{ id: string }>
           .single();
         if (profileData) {
           setProfileSeller({
-            id:            profileData.id as string,
-            name:          profileData.name as string,
-            initials:      profileData.initials as string,
-            location:      profileData.location as string,
-            avatarUrl:     profileData.avatar_url as string | undefined,
-            phoneVerified: profileData.phone_verified as boolean,
-            dniVerified:   profileData.dni_verified as boolean,
-            memberSince:   new Date(profileData.created_at as string).toLocaleDateString("es-AR", { month: "long", year: "numeric" }),
+            id:               profileData.id as string,
+            name:             profileData.name as string,
+            initials:         profileData.initials as string,
+            location:         profileData.location as string,
+            avatarUrl:        profileData.avatar_url as string | undefined,
+            phoneVerified:    profileData.phone_verified as boolean,
+            dniVerified:      (profileData.dni_status as string) === "approved",
+            memberSince:      new Date(profileData.created_at as string).toLocaleDateString("es-AR", { month: "long", year: "numeric" }),
+            isBusiness:           (profileData.is_business as boolean) ?? false,
+            businessName:         profileData.business_name as string | undefined,
+            businessCategory:     profileData.business_category as string | undefined,
+            businessHours:        profileData.business_hours as string | undefined,
+            businessDesc:         profileData.business_desc as string | undefined,
+            businessCuitVerified: (profileData.business_cuit_verified as boolean) ?? false,
           });
         }
         // Publicaciones reales de este vendedor
@@ -125,7 +143,49 @@ export default function SellerPage({ params }: { params: Promise<{ id: string }>
 
   const seller = mockSeller ?? profileSeller;
 
-  if (!ready) return <div><Navbar /></div>;
+  // Nombre a mostrar: nombre del negocio si está activo, si no el nombre personal
+  const sellerDisplayName = profileSeller?.isBusiness && profileSeller.businessName
+    ? profileSeller.businessName
+    : seller?.name ?? "";
+
+  if (!ready) return (
+    <div>
+      <Navbar />
+      <div style={{ maxWidth: 680, margin: "0 auto", padding: "2rem 1.5rem" }}>
+        {/* Header del vendedor */}
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "1.5rem", marginBottom: 16 }}>
+          <div style={{ display: "flex", gap: 16, alignItems: "flex-start", marginBottom: 16 }}>
+            <div className="skeleton" style={{ width: 72, height: 72, borderRadius: "50%", flexShrink: 0 }} />
+            <div style={{ flex: 1 }}>
+              <div className="skeleton" style={{ width: "55%", height: 20, borderRadius: 4, marginBottom: 8 }} />
+              <div className="skeleton" style={{ width: "35%", height: 13, borderRadius: 3, marginBottom: 6 }} />
+              <div className="skeleton" style={{ width: "40%", height: 13, borderRadius: 3, marginBottom: 12 }} />
+              <div className="skeleton" style={{ width: 100, height: 28, borderRadius: 6 }} />
+            </div>
+          </div>
+          {/* Stats row */}
+          <div style={{ display: "flex", gap: 8 }}>
+            {[80, 60, 70].map((w, i) => (
+              <div key={i} className="skeleton" style={{ flex: 1, height: 52, borderRadius: 6 }} />
+            ))}
+          </div>
+        </div>
+        {/* Grid de productos */}
+        <div className="skeleton" style={{ width: 120, height: 14, borderRadius: 3, marginBottom: 12 }} />
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
+          {[1,2,3,4].map(i => (
+            <div key={i} style={{ borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
+              <div className="skeleton" style={{ height: 120 }} />
+              <div style={{ padding: "10px 12px 12px" }}>
+                <div className="skeleton" style={{ height: 13, borderRadius: 3, marginBottom: 6 }} />
+                <div className="skeleton" style={{ width: "60%", height: 16, borderRadius: 3 }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 
   if (!seller) return (
     <div>
@@ -163,7 +223,7 @@ export default function SellerPage({ params }: { params: Promise<{ id: string }>
     const u = currentUser ?? await getCurrentUser();
     if (!u) { router.push(`/login?redirect=/vendedor/${id}`); return; }
     const conv = await getOrCreateConversation({
-      productId:       0,
+      productId:       null,
       productTitle:    "Consulta general",
       productEmoji:    "💬",
       productBg:       "#f5f5f3",
@@ -171,7 +231,7 @@ export default function SellerPage({ params }: { params: Promise<{ id: string }>
       buyerName:       u.name,
       buyerInitials:   u.initials,
       sellerId:        id,
-      sellerName:      seller?.name ?? "Vendedor",
+      sellerName:      sellerDisplayName || "Vendedor",
       sellerInitials:  seller?.initials ?? "VV",
     });
     router.push(`/mensajes/${conv.id}`);
@@ -226,9 +286,28 @@ export default function SellerPage({ params }: { params: Promise<{ id: string }>
               ) : seller.initials}
             </div>
             <div>
-              <h1 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 4px", letterSpacing: -0.4 }}>{seller.name}</h1>
-              <div style={{ fontSize: 13, color: "var(--text-3)" }}>
-                {seller.location}{seller.memberSince ? ` · Miembro desde ${seller.memberSince}` : ""}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0, letterSpacing: -0.4 }}>
+                  {(seller as ProfileSeller).isBusiness && (seller as ProfileSeller).businessName
+                    ? (seller as ProfileSeller).businessName
+                    : seller.name}
+                </h1>
+                {(seller as ProfileSeller).isBusiness && (
+                  (seller as ProfileSeller).businessCuitVerified
+                    ? <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" as const, padding: "2px 7px", borderRadius: 4, background: "var(--green)", color: "#fff" }}>✓ Verificado</span>
+                    : <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" as const, padding: "2px 7px", borderRadius: 4, background: "#1d4ed8", color: "#fff" }}>Negocio</span>
+                )}
+              </div>
+              <div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>
+                {/* Si es negocio: mostrar nombre personal como titular */}
+                {(seller as ProfileSeller).isBusiness && (seller as ProfileSeller).businessName
+                  ? seller.name
+                  : null}
+                {(seller as ProfileSeller).isBusiness && (seller as ProfileSeller).businessCategory
+                  ? ` · ${(seller as ProfileSeller).businessCategory}`
+                  : null}
+                {seller.location ? ` · ${seller.location}` : ""}
+                {seller.memberSince ? ` · Desde ${seller.memberSince}` : ""}
               </div>
             </div>
           </div>
@@ -242,6 +321,26 @@ export default function SellerPage({ params }: { params: Promise<{ id: string }>
             {trustLevel === "full" ? "✓ Verificado completo" :
               trustLevel === "partial" ? "~ Verificación parcial" : "Sin verificar"}
           </div>
+
+          {/* Business info block */}
+          {(seller as ProfileSeller).isBusiness && (
+            <div style={{
+              background: "var(--bg)", border: "1px solid var(--border)",
+              borderRadius: 6, padding: "12px 14px", marginBottom: 18,
+            }}>
+              {(seller as ProfileSeller).businessDesc && (
+                <p style={{ fontSize: 13, color: "var(--text-2)", margin: "0 0 8px", lineHeight: 1.6 }}>
+                  {(seller as ProfileSeller).businessDesc}
+                </p>
+              )}
+              {(seller as ProfileSeller).businessHours && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-3)" }}>
+                  <span>🕐</span>
+                  <span>{(seller as ProfileSeller).businessHours}</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Stats */}
           <div style={{
@@ -413,7 +512,7 @@ export default function SellerPage({ params }: { params: Promise<{ id: string }>
         {(sellerProducts.length > 0 || realProducts.length > 0) && (
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase" as const, letterSpacing: 0.3, marginBottom: 12 }}>
-              Publicaciones de {seller.name.split(" ")[0]}
+              Publicaciones de {sellerDisplayName.split(" ")[0]}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
               {/* Mock products */}
@@ -471,7 +570,7 @@ export default function SellerPage({ params }: { params: Promise<{ id: string }>
               border: "none", borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: "pointer",
             }}
           >
-            Contactar a {seller.name.split(" ")[0]}
+            Contactar a {sellerDisplayName.split(" ")[0]}
           </button>
         )}
       </div>

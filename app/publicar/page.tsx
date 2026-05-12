@@ -9,25 +9,55 @@ import { getCurrentUser, type LocalUser } from "../lib/auth";
 import { categories } from "../data";
 import { useToast } from "../components/ToastProvider";
 import LocationInput from "../components/LocationInput";
+import { usePageTitle } from "../lib/usePageTitle";
+import ExcelUpload from "./ExcelUpload";
 
 const MAX_IMAGES = 5;
+const MAX_DESC   = 800;
+
+const categoryTips: Record<string, string> = {
+  "Electrónica":  "💡 Incluí modelo, número de serie y si tiene cargador o accesorios originales.",
+  "Ropa":         "💡 Especificá el talle, la marca y si el precio es negociable.",
+  "Hogar":        "💡 Indicá las medidas del objeto y si hacés envíos o solo retiro.",
+  "Arte":         "💡 Contá la técnica, las medidas y si incluye marco o certificado de autenticidad.",
+  "Deportes":     "💡 Describí el estado de uso real y si viene con accesorios incluidos.",
+  "Vehículos":    "💡 Incluí año, kilometraje y si tiene toda la documentación al día.",
+  "Herramientas": "💡 Indicá la marca, el voltaje si aplica y el estado general de uso.",
+  "Juguetes":     "💡 Especificá la edad recomendada, si están completos y sin piezas faltantes.",
+  "Libros":       "💡 Incluí autor, editorial, año y si tiene subrayados o anotaciones.",
+  "Mascotas":     "💡 Indicá para qué tipo de mascota son los accesorios y el estado.",
+  "Bebés":        "💡 Especificá el rango de edad, las medidas y si tiene desgaste visible.",
+  "Jardín":       "💡 Indicá si la planta está en maceta o es de exterior y su tamaño actual.",
+};
 
 const categoryColors: Record<string, string> = {
-  "Electrónica": "#dbeafe",
-  "Ropa":        "#fce7f3",
-  "Hogar":       "#d1fae5",
-  "Arte":        "#fef3c7",
-  "Deportes":    "#e0f2fe",
-  "Vehículos":   "#f3e8ff",
+  "Electrónica":  "#dbeafe",
+  "Ropa":         "#fce7f3",
+  "Hogar":        "#d1fae5",
+  "Arte":         "#fef3c7",
+  "Deportes":     "#e0f2fe",
+  "Vehículos":    "#f3e8ff",
+  "Herramientas": "#fed7aa",
+  "Juguetes":     "#fde68a",
+  "Libros":       "#c7d2fe",
+  "Mascotas":     "#fecdd3",
+  "Bebés":        "#bae6fd",
+  "Jardín":       "#bbf7d0",
 };
 
 const categoryEmojis: Record<string, string[]> = {
-  "Electrónica": ["💻", "📱", "🖥️", "⌨️", "🖱️", "🎧", "📷", "🎮", "📺", "🔋"],
-  "Ropa":        ["👗", "👟", "👔", "🧥", "👜", "🕶️", "👒", "🧣", "👞", "🧤"],
-  "Hogar":       ["🛋️", "🪑", "🛏️", "🪴", "🍳", "🪞", "🛁", "🖼️", "💡", "🧹"],
-  "Arte":        ["🎨", "📚", "🎵", "🎸", "🎹", "📷", "✏️", "🎭", "🎬", "🧵"],
-  "Deportes":    ["🚲", "⚽", "🎾", "🏋️", "🛹", "🏊", "⛷️", "🥊", "🎯", "🏄"],
-  "Vehículos":   ["🚗", "🏍️", "🚐", "🚚", "🛵", "🚙", "🏎️", "🚕", "🛻", "🚌"],
+  "Electrónica":  ["💻", "📱", "🖥️", "⌨️", "🖱️", "🎧", "📷", "🎮", "📺", "🔋"],
+  "Ropa":         ["👗", "👟", "👔", "🧥", "👜", "🕶️", "👒", "🧣", "👞", "🧤"],
+  "Hogar":        ["🛋️", "🪑", "🛏️", "🪴", "🍳", "🪞", "🛁", "🖼️", "💡", "🧹"],
+  "Arte":         ["🎨", "📚", "🎵", "🎸", "🎹", "📷", "✏️", "🎭", "🎬", "🧵"],
+  "Deportes":     ["🚲", "⚽", "🎾", "🏋️", "🛹", "🏊", "⛷️", "🥊", "🎯", "🏄"],
+  "Vehículos":    ["🚗", "🏍️", "🚐", "🚚", "🛵", "🚙", "🏎️", "🚕", "🛻", "🚌"],
+  "Herramientas": ["🔧", "🪛", "🔨", "🪚", "🔩", "⚙️", "🪝", "🔑", "🗜️", "🔌"],
+  "Juguetes":     ["🧸", "🎮", "🎲", "🪆", "🎯", "🪀", "🧩", "🎠", "🪁", "🎪"],
+  "Libros":       ["📚", "📖", "📕", "📗", "📘", "📙", "📜", "📰", "🗒️", "✏️"],
+  "Mascotas":     ["🐶", "🐱", "🐠", "🐦", "🐹", "🦜", "🐰", "🐢", "🐾", "🦮"],
+  "Bebés":        ["👶", "🍼", "🧸", "🪆", "🛒", "🧷", "🎠", "🪃", "🧦", "👕"],
+  "Jardín":       ["🌱", "🌸", "🪴", "🌻", "🌿", "🍃", "🌾", "🌺", "🌷", "🪻"],
 };
 
 function formatPrice(raw: string): string {
@@ -73,6 +103,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 export default function PublicarPage() {
+  usePageTitle("Publicar producto");
   const router = useRouter();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -80,6 +111,7 @@ export default function PublicarPage() {
   const [user, setUser]         = useState<LocalUser | null>(null);
   const [checking, setChecking] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [mode, setMode]         = useState<"manual" | "excel">("manual");
 
   const [imageFiles, setImageFiles]     = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
@@ -89,7 +121,11 @@ export default function PublicarPage() {
   const [form, setForm] = useState({
     title: "", priceRaw: "", category: "Electrónica",
     emoji: "💻", description: "", location: "",
-    condition: "Usado" as "Nuevo" | "Usado",
+    condition:  "Usado" as "Nuevo" | "Usado",
+    negotiable: false,
+    delivery:   "retiro" as "retiro" | "envio" | "ambos",
+    phone:      "",
+    stock:      1,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -176,6 +212,10 @@ export default function PublicarPage() {
         bg,
         verified:    false,
         userId:      user!.id,
+        negotiable:  form.negotiable,
+        delivery:    form.delivery,
+        phone:       form.phone || undefined,
+        stock:       form.stock,
       });
 
       toast("¡Publicación creada con éxito!");
@@ -197,10 +237,38 @@ export default function PublicarPage() {
         <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, color: "var(--text-3)", marginBottom: 20 }}>
           ← Inicio
         </Link>
-        <h1 style={{ fontSize: 19, fontWeight: 700, marginBottom: 24, letterSpacing: -0.5 }}>
+        <h1 style={{ fontSize: 19, fontWeight: 700, marginBottom: 20, letterSpacing: -0.5 }}>
           Nueva publicación
         </h1>
 
+        {/* ── Toggle modo ── */}
+        <div style={{
+          display: "flex", background: "var(--surface)",
+          border: "1px solid var(--border)", borderRadius: 8,
+          padding: 4, marginBottom: 24,
+        }}>
+          {([
+            { value: "manual", label: "✏️  Publicación manual" },
+            { value: "excel",  label: "📊  Importar desde Excel" },
+          ] as const).map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => setMode(opt.value)}
+              style={{
+                flex: 1, padding: "8px 12px", borderRadius: 6, fontSize: 13,
+                border: "none",
+                background: mode === opt.value ? "var(--green-subtle)" : "none",
+                color:      mode === opt.value ? "var(--green)" : "var(--text-3)",
+                fontWeight: mode === opt.value ? 600 : 400,
+                cursor: "pointer", transition: "all 0.12s",
+              }}
+            >{opt.label}</button>
+          ))}
+        </div>
+
+        {mode === "excel" ? (
+          <ExcelUpload userId={user!.id} onDone={() => router.push("/")} />
+        ) : (
         <div className="two-col-publish">
 
           {/* Formulario */}
@@ -354,6 +422,54 @@ export default function PublicarPage() {
                   ))}
                 </div>
               </div>
+
+              {/* Negociable */}
+              <div style={{ marginTop: 12 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={form.negotiable}
+                    onChange={e => setForm(f => ({ ...f, negotiable: e.target.checked }))}
+                    style={{ width: 15, height: 15, accentColor: "var(--green)", cursor: "pointer", flexShrink: 0 }}
+                  />
+                  <span style={{ fontSize: 13, color: "var(--text-2)", userSelect: "none" }}>Precio negociable</span>
+                </label>
+              </div>
+
+              {/* Stock */}
+              <div style={{ marginTop: 14 }}>
+                <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 7 }}>
+                  Stock disponible
+                </label>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <button
+                    onClick={() => setForm(f => ({ ...f, stock: Math.max(1, f.stock - 1) }))}
+                    style={{
+                      width: 30, height: 30, borderRadius: 6,
+                      border: "1px solid var(--border)", background: "var(--bg)",
+                      cursor: form.stock <= 1 ? "default" : "pointer",
+                      fontSize: 17, color: form.stock <= 1 ? "var(--border)" : "var(--text-2)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      transition: "color 0.1s",
+                    }}
+                  >−</button>
+                  <span style={{ fontSize: 15, fontWeight: 700, minWidth: 28, textAlign: "center" }}>
+                    {form.stock}
+                  </span>
+                  <button
+                    onClick={() => setForm(f => ({ ...f, stock: Math.min(999, f.stock + 1) }))}
+                    style={{
+                      width: 30, height: 30, borderRadius: 6,
+                      border: "1px solid var(--border)", background: "var(--bg)",
+                      cursor: "pointer", fontSize: 17, color: "var(--text-2)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}
+                  >+</button>
+                  <span style={{ fontSize: 12, color: "var(--text-3)" }}>
+                    {form.stock === 1 ? "unidad" : "unidades"}
+                  </span>
+                </div>
+              </div>
             </Section>
 
             {/* ── Categoría ── */}
@@ -393,19 +509,94 @@ export default function PublicarPage() {
                   >{em}</button>
                 ))}
               </div>
+
+              {/* Tip contextual */}
+              {categoryTips[form.category] && (
+                <div style={{
+                  marginTop: 12, padding: "9px 12px",
+                  background: "var(--green-subtle)", borderRadius: 6,
+                  fontSize: 12, color: "var(--text-2)", lineHeight: 1.55,
+                }}>
+                  {categoryTips[form.category]}
+                </div>
+              )}
+            </Section>
+
+            {/* ── Entrega y contacto ── */}
+            <Section title="Entrega y contacto">
+              {/* Forma de entrega */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 7 }}>
+                  Forma de entrega
+                </label>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {([
+                    { value: "retiro", label: "🤝 Retiro en persona" },
+                    { value: "envio",  label: "📦 Envío" },
+                    { value: "ambos",  label: "✅ Ambos" },
+                  ] as const).map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setForm(f => ({ ...f, delivery: opt.value }))}
+                      style={{
+                        padding: "6px 14px", borderRadius: 6, fontSize: 13,
+                        border: "1px solid",
+                        borderColor: form.delivery === opt.value ? "var(--green)" : "var(--border)",
+                        background:  form.delivery === opt.value ? "var(--green-subtle)" : "var(--surface)",
+                        color:       form.delivery === opt.value ? "var(--green)" : "var(--text-2)",
+                        fontWeight:  form.delivery === opt.value ? 600 : 400,
+                        cursor: "pointer",
+                      }}
+                    >{opt.label}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* WhatsApp opcional */}
+              <Field label="WhatsApp (opcional)">
+                <div style={{ position: "relative" }}>
+                  <span style={{
+                    position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)",
+                    fontSize: 13, color: "var(--text-3)", pointerEvents: "none",
+                  }}>+54</span>
+                  <input
+                    value={form.phone}
+                    onChange={e => setForm(f => ({ ...f, phone: e.target.value.replace(/\D/g, "").slice(0, 12) }))}
+                    placeholder="11 2345 6789"
+                    inputMode="tel"
+                    style={{ ...inputStyle(false), paddingLeft: 38 }}
+                  />
+                </div>
+                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 5, lineHeight: 1.4 }}>
+                  Si lo completás, los compradores podrán contactarte por WhatsApp.
+                </div>
+              </Field>
             </Section>
 
             {/* ── Descripción ── */}
             <Section title="Descripción">
-              <Field label="Descripción" error={errors.description}>
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 5 }}>
+                  <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>Descripción</label>
+                  <span style={{
+                    fontSize: 11,
+                    color: form.description.length >= MAX_DESC ? "#ef4444" : "var(--text-3)",
+                    fontWeight: form.description.length >= MAX_DESC ? 600 : 400,
+                  }}>
+                    {form.description.length}/{MAX_DESC}
+                  </span>
+                </div>
                 <textarea
                   value={form.description}
-                  onChange={e => setField("description", e.target.value)}
+                  onChange={e => setField("description", e.target.value.slice(0, MAX_DESC))}
                   placeholder="Describí el estado, qué incluye, condiciones de entrega..."
                   rows={4}
                   style={{ ...inputStyle(!!errors.description), resize: "vertical", lineHeight: 1.65 }}
                 />
-              </Field>
+                {errors.description && (
+                  <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4 }}>{errors.description}</div>
+                )}
+              </div>
             </Section>
 
             {/* ── Ubicación ── */}
@@ -462,8 +653,18 @@ export default function PublicarPage() {
                 <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 5, lineHeight: 1.35, minHeight: 18 }}>
                   {form.title || <span style={{ color: "var(--text-3)" }}>Título del producto</span>}
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: "var(--green)", marginBottom: 7, letterSpacing: -0.3, minHeight: 20 }}>
-                  {priceDisplay || <span style={{ color: "var(--text-3)", fontWeight: 400, fontSize: 13 }}>Precio</span>}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 7, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 15, fontWeight: 600, color: "var(--green)", letterSpacing: -0.3, minHeight: 20 }}>
+                    {priceDisplay || <span style={{ color: "var(--text-3)", fontWeight: 400, fontSize: 13 }}>Precio</span>}
+                  </span>
+                  {form.negotiable && (
+                    <span style={{
+                      fontSize: 10, fontWeight: 600, color: "var(--green)",
+                      background: "var(--green-subtle)", borderRadius: 4, padding: "2px 6px",
+                    }}>
+                      Negociable
+                    </span>
+                  )}
                 </div>
                 <div style={{ fontSize: 11, color: "var(--text-3)", display: "flex", justifyContent: "space-between" }}>
                   <span>{form.location || "Ubicación"}</span>
@@ -477,6 +678,7 @@ export default function PublicarPage() {
           </div>
 
         </div>
+        )}
       </div>
     </div>
   );

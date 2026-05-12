@@ -1,9 +1,10 @@
 "use client";
-import { use, useEffect, useRef, useState } from "react";
+import { use, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "../../components/Navbar";
 import { getCurrentUser, type LocalUser } from "../../lib/auth";
+import { usePageTitle } from "../../lib/usePageTitle";
 import {
   getConversationById,
   getMessages,
@@ -34,11 +35,16 @@ function timeAgo(iso: string): string {
 export default function ChatPage({ params }: { params: Promise<{ id: string }> }) {
   const { id }      = use(params);
   const router      = useRouter();
-  const bottomRef   = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const bottomRef      = useRef<HTMLDivElement>(null);
+  const textareaRef    = useRef<HTMLTextAreaElement>(null);
+  const messagesRef    = useRef<HTMLDivElement>(null);
+  const isInitialLoad  = useRef(true);
 
   const [user, setUser]       = useState<LocalUser | null>(null);
   const [conv, setConv]       = useState<Conversation | null>(null);
+  // Título dinámico con el nombre del otro usuario
+  const titleOtherName = conv ? (conv.buyerId === user?.id ? conv.sellerName : conv.buyerName) : undefined;
+  usePageTitle(titleOtherName ? `Chat con ${titleOtherName}` : "Mensajes");
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText]       = useState("");
   const [ready, setReady]     = useState(false);
@@ -55,7 +61,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
       await markConversationRead(c.id, u.id);   // marcar leído al abrir
 
       // Leer borrador pre-generado desde /reservar (si existe)
-      const draftKey = `cercaya_draft_${c.id}`;
+      const draftKey = `estamosCerca_draft_${c.id}`;
       const draft = sessionStorage.getItem(draftKey);
       if (draft) {
         setText(draft);
@@ -115,9 +121,35 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
   }
 
-  // Scroll al último mensaje
+  function scrollToBottom(smooth = true) {
+    const el = messagesRef.current;
+    if (!el) return;
+    if (smooth) {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    } else {
+      el.scrollTop = el.scrollHeight;
+    }
+  }
+
+  // Carga inicial: scroll síncrono ANTES del paint.
+  // Depende también de `ready` porque el contenedor (messagesRef) no existe
+  // mientras se muestra el skeleton — sin esto isInitialLoad se marcaba como
+  // "done" antes de que el div estuviera montado.
+  useLayoutEffect(() => {
+    if (!isInitialLoad.current || messages.length === 0) return;
+    const el = messagesRef.current;
+    if (!el) return; // skeleton todavía visible, esperar al próximo render
+    el.scrollTop = el.scrollHeight;
+    isInitialLoad.current = false;
+  }, [messages, ready]);
+
+  // Mensajes nuevos después de la carga: scroll suave solo si está cerca del fondo
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (isInitialLoad.current) return;
+    const el = messagesRef.current;
+    if (!el) return;
+    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (distFromBottom < 120) scrollToBottom(true);
   }, [messages]);
 
   async function handleSend() {
@@ -133,6 +165,8 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     // Resetear altura del textarea
     if (textareaRef.current) textareaRef.current.style.height = "auto";
     setMessages(await getMessages(conv.id));
+    // Al enviar propio mensaje siempre scrollear al fondo
+    setTimeout(() => scrollToBottom(true), 50);
 
     // Auto-respuesta de vendedor mock (solo al primer mensaje del comprador)
     if (isBuyer && isFirstMsg && mockSeller) {
@@ -150,7 +184,32 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   }
 
-  if (!ready || !user || !conv) return <div><Navbar /></div>;
+  if (!ready || !user || !conv) return (
+    <div className="chat-wrap" style={{ display: "flex", flexDirection: "column" }}>
+      <Navbar />
+      {/* Header skeleton */}
+      <div style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)", padding: "12px 1.5rem", display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+        <div className="skeleton" style={{ width: 20, height: 14, borderRadius: 3 }} />
+        <div className="skeleton" style={{ width: 36, height: 36, borderRadius: 6, flexShrink: 0 }} />
+        <div>
+          <div className="skeleton" style={{ width: 120, height: 14, borderRadius: 3, marginBottom: 5 }} />
+          <div className="skeleton" style={{ width: 80, height: 11, borderRadius: 3 }} />
+        </div>
+      </div>
+      {/* Body */}
+      <div style={{ flex: 1, padding: "1.5rem", display: "flex", flexDirection: "column", gap: 10, maxWidth: 680, width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
+        {[72, 180, 120, 90].map((w, i) => (
+          <div key={i} style={{ display: "flex", justifyContent: i % 2 === 0 ? "flex-start" : "flex-end" }}>
+            <div className="skeleton" style={{ width: w, height: 36, borderRadius: 10 }} />
+          </div>
+        ))}
+      </div>
+      {/* Input skeleton */}
+      <div style={{ background: "var(--surface)", borderTop: "1px solid var(--border)", padding: "12px 1.5rem", flexShrink: 0 }}>
+        <div className="skeleton" style={{ height: 38, borderRadius: 8 }} />
+      </div>
+    </div>
+  );
 
   const isBuyer    = conv.buyerId === user.id;
   const otherName  = isBuyer ? conv.sellerName    : conv.buyerName;
@@ -187,7 +246,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
       </div>
 
       {/* Messages */}
-      <div style={{
+      <div ref={messagesRef} className="chat-messages" style={{
         flex: 1, overflowY: "auto",
         padding: "1.25rem 1.5rem",
         display: "flex", flexDirection: "column", gap: 8,
@@ -195,8 +254,74 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
         boxSizing: "border-box",
       }}>
         {messages.length === 0 && (
-          <div style={{ textAlign: "center", color: "var(--text-3)", fontSize: 12, padding: "2rem 0" }}>
-            Enviá un mensaje para iniciar la conversación.
+          <div style={{
+            display: "flex", flexDirection: "column", alignItems: "center",
+            padding: "2.5rem 1rem", gap: 16,
+          }}>
+            {/* Tarjeta del producto */}
+            <Link href={`/producto/${conv.productId}`} style={{
+              display: "flex", alignItems: "center", gap: 12,
+              background: "var(--surface)", border: "1px solid var(--border)",
+              borderRadius: 10, padding: "12px 16px",
+              width: "100%", maxWidth: 320,
+              transition: "border-color 0.12s",
+            }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = "var(--text-3)")}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--border)")}
+            >
+              <div style={{
+                width: 48, height: 48, borderRadius: 8, flexShrink: 0,
+                background: conv.productBg,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 24,
+              }}>
+                {conv.productEmoji}
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", lineHeight: 1.3 }}>
+                  {conv.productTitle}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
+                  Ver publicación →
+                </div>
+              </div>
+            </Link>
+
+            {/* Avatares */}
+            <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+              <div style={{
+                width: 38, height: 38, borderRadius: "50%",
+                background: "var(--green-subtle)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 13, fontWeight: 700, color: "var(--green)",
+                border: "2px solid var(--bg)", zIndex: 1,
+              }}>
+                {isBuyer ? conv.buyerInitials : conv.sellerInitials}
+              </div>
+              <div style={{
+                width: 38, height: 38, borderRadius: "50%",
+                background: "var(--border)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 13, fontWeight: 700, color: "var(--text-3)",
+                border: "2px solid var(--bg)", marginLeft: -10,
+              }}>
+                {otherInit}
+              </div>
+            </div>
+
+            {/* Texto */}
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", marginBottom: 4 }}>
+                {isBuyer
+                  ? `Consultá a ${conv.sellerName.split(" ")[0]}`
+                  : `${conv.buyerName.split(" ")[0]} está interesado`}
+              </div>
+              <div style={{ fontSize: 12, color: "var(--text-3)", lineHeight: 1.6, maxWidth: 260 }}>
+                {isBuyer
+                  ? "Preguntá sobre el estado, precio o dónde coordinar el encuentro."
+                  : "Respondé las preguntas del comprador para cerrar el trato."}
+              </div>
+            </div>
           </div>
         )}
 
