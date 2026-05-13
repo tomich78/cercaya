@@ -25,12 +25,14 @@ function RegistroForm() {
   const searchParams = useSearchParams();
   const redirect     = searchParams.get("redirect") ?? "/";
 
-  const [form, setForm] = useState({ name: "", email: "", password: "", location: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", confirm: "", location: "" });
   const [locationLat, setLocationLat] = useState<number | null>(null);
   const [locationLng, setLocationLng] = useState<number | null>(null);
   const [errors, setErrors]           = useState<Record<string, string>>({});
   const [globalError, setGlobalError] = useState("");
   const [loading, setLoading]         = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm]   = useState(false);
   const [registered, setRegistered]   = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState("");
 
@@ -54,6 +56,8 @@ function RegistroForm() {
     else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = "Email inválido";
     if (!form.password)        e.password = "Obligatorio";
     else if (form.password.length < 6) e.password = "Mínimo 6 caracteres";
+    if (!form.confirm)         e.confirm  = "Obligatorio";
+    else if (form.confirm !== form.password) e.confirm = "Las contraseñas no coinciden";
     if (!form.location.trim()) e.location = "Obligatorio";
     else if (!locationLat)     e.location = "Elegí una ubicación de la lista";
     return e;
@@ -201,15 +205,82 @@ function RegistroForm() {
               <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 5 }}>
                 Contraseña
               </label>
-              <input
-                type="password"
-                value={form.password}
-                onChange={e => setField("password", e.target.value)}
-                placeholder="Mínimo 6 caracteres"
-                autoComplete="new-password"
-                style={inputStyle(!!errors.password)}
-              />
+              <div style={{ position: "relative" }}>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={form.password}
+                  onChange={e => setField("password", e.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                  autoComplete="new-password"
+                  style={{ ...inputStyle(!!errors.password), paddingRight: 40 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(v => !v)}
+                  style={{
+                    position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
+                    background: "none", border: "none", cursor: "pointer",
+                    color: "var(--text-3)", padding: 2, display: "flex", alignItems: "center",
+                  }}
+                  tabIndex={-1}
+                  title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                >
+                  {showPassword ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                      <line x1="1" y1="1" x2="23" y2="23"/>
+                    </svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  )}
+                </button>
+              </div>
               {errors.password && <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4 }}>{errors.password}</div>}
+            </div>
+
+            <div>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 5 }}>
+                Repetir contraseña
+              </label>
+              <div style={{ position: "relative" }}>
+                <input
+                  type={showConfirm ? "text" : "password"}
+                  value={form.confirm}
+                  onChange={e => setField("confirm", e.target.value)}
+                  placeholder="Repetí tu contraseña"
+                  autoComplete="new-password"
+                  style={{ ...inputStyle(!!errors.confirm), paddingRight: 40 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(v => !v)}
+                  style={{
+                    position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
+                    background: "none", border: "none", cursor: "pointer",
+                    color: "var(--text-3)", padding: 2, display: "flex", alignItems: "center",
+                  }}
+                  tabIndex={-1}
+                  title={showConfirm ? "Ocultar contraseña" : "Mostrar contraseña"}
+                >
+                  {showConfirm ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                      <line x1="1" y1="1" x2="23" y2="23"/>
+                    </svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  )}
+                </button>
+              </div>
+              {errors.confirm && <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4 }}>{errors.confirm}</div>}
             </div>
 
             <div>
