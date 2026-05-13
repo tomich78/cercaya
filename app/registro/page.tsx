@@ -20,10 +20,29 @@ function inputStyle(hasError: boolean): React.CSSProperties {
   };
 }
 
+// Ícono ojo abierto / cerrado
+function EyeIcon({ open }: { open: boolean }) {
+  return open ? (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+      <line x1="1" y1="1" x2="23" y2="23"/>
+    </svg>
+  ) : (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
+  );
+}
+
 function RegistroForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const redirect     = searchParams.get("redirect") ?? "/";
+
+  // "form" → llenado del formulario | "confirm" → revisión antes de crear
+  const [step, setStep] = useState<"form" | "confirm">("form");
 
   const [form, setForm] = useState({ name: "", email: "", password: "", confirm: "", location: "" });
   const [locationLat, setLocationLat] = useState<number | null>(null);
@@ -32,8 +51,8 @@ function RegistroForm() {
   const [globalError, setGlobalError] = useState("");
   const [loading, setLoading]         = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm]   = useState(false);
-  const [registered, setRegistered]   = useState(false);
+  const [showConfirm,  setShowConfirm]  = useState(false);
+  const [registered,   setRegistered]  = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState("");
 
   function setField(field: string, value: string) {
@@ -63,20 +82,27 @@ function RegistroForm() {
     return e;
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  // Paso 1: validar y avanzar a la confirmación
+  function handleNext(e: React.FormEvent) {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    setStep("confirm");
+  }
+
+  // Paso 2: crear la cuenta de verdad
+  async function handleConfirm() {
     setLoading(true);
+    setGlobalError("");
 
     const result = await register(form.name, form.email, form.password, form.location);
     if (result.error) {
       setGlobalError(result.error);
+      setStep("form");   // volver al formulario para que pueda corregir
       setLoading(false);
       return;
     }
 
-    // Guardar coordenadas en el perfil
     if (result.user && locationLat && locationLng) {
       await updateUser(result.user.id, {
         location: form.location,
@@ -85,19 +111,17 @@ function RegistroForm() {
       });
     }
 
-    // Si hay sesión activa (confirmación desactivada), redirigir directo
     if (result.user) {
       router.push(redirect);
       return;
     }
 
-    // Si no hay sesión, es porque requiere confirmación de email
     setRegisteredEmail(form.email);
     setRegistered(true);
     setLoading(false);
   }
 
-  // ── Pantalla de confirmación de email ──────────────────────
+  // ── Pantalla post-registro: confirmar email ─────────────────
   if (registered) {
     return (
       <div>
@@ -141,6 +165,104 @@ function RegistroForm() {
     );
   }
 
+  // ── Paso 2: pantalla de confirmación ───────────────────────
+  if (step === "confirm") {
+    return (
+      <div>
+        <Navbar />
+        <div style={{ maxWidth: 420, margin: "3rem auto", padding: "0 1.5rem" }}>
+          <div style={{
+            background: "var(--surface)", border: "1px solid var(--border)",
+            borderRadius: 8, padding: "2rem",
+          }}>
+            {/* Header */}
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 6 }}>Paso 2 de 2</div>
+              <h1 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 4px", letterSpacing: -0.4 }}>
+                Confirmá tus datos
+              </h1>
+              <p style={{ fontSize: 13, color: "var(--text-3)", margin: 0 }}>
+                Revisá que todo esté correcto antes de crear tu cuenta.
+              </p>
+            </div>
+
+            {globalError && (
+              <div style={{
+                background: "#fef2f2", border: "1px solid #fecaca",
+                borderRadius: 6, padding: "9px 12px",
+                fontSize: 13, color: "#dc2626", marginBottom: 16,
+              }}>
+                {globalError}
+              </div>
+            )}
+
+            {/* Resumen de datos */}
+            <div style={{
+              border: "1px solid var(--border)", borderRadius: 8,
+              overflow: "hidden", marginBottom: 20,
+            }}>
+              {[
+                { label: "Nombre", value: form.name, icon: "👤" },
+                { label: "Email",  value: form.email, icon: "✉️" },
+                { label: "Zona",   value: form.location, icon: "📍" },
+                { label: "Contraseña", value: "••••••••", icon: "🔒" },
+              ].map((row, i, arr) => (
+                <div
+                  key={row.label}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 12,
+                    padding: "12px 14px",
+                    borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none",
+                    background: "var(--bg)",
+                  }}
+                >
+                  <span style={{ fontSize: 16, flexShrink: 0 }}>{row.icon}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 1 }}>{row.label}</div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {row.value}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Botones */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <button
+                onClick={handleConfirm}
+                disabled={loading}
+                style={{
+                  background: "var(--green)", color: "#fff",
+                  border: "none", borderRadius: 6,
+                  padding: "11px", fontSize: 14, fontWeight: 600,
+                  cursor: loading ? "default" : "pointer",
+                  opacity: loading ? 0.7 : 1,
+                  letterSpacing: -0.1,
+                }}
+              >
+                {loading ? "Creando cuenta..." : "✓ Confirmar y crear cuenta"}
+              </button>
+              <button
+                onClick={() => { setStep("form"); setGlobalError(""); }}
+                disabled={loading}
+                style={{
+                  background: "none", color: "var(--text-2)",
+                  border: "1px solid var(--border)", borderRadius: 6,
+                  padding: "9px", fontSize: 13, fontWeight: 400,
+                  cursor: loading ? "default" : "pointer",
+                }}
+              >
+                ← Volver y editar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Paso 1: formulario ──────────────────────────────────────
   return (
     <div>
       <Navbar />
@@ -153,6 +275,7 @@ function RegistroForm() {
           padding: "2rem",
         }}>
           <div style={{ marginBottom: 24 }}>
+            <div style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 6 }}>Paso 1 de 2</div>
             <h1 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 4px", letterSpacing: -0.4 }}>
               Crear cuenta
             </h1>
@@ -171,7 +294,8 @@ function RegistroForm() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <form onSubmit={handleNext} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {/* Nombre */}
             <div>
               <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 5 }}>
                 Nombre completo
@@ -186,6 +310,7 @@ function RegistroForm() {
               {errors.name && <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4 }}>{errors.name}</div>}
             </div>
 
+            {/* Email */}
             <div>
               <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 5 }}>
                 Email
@@ -201,6 +326,7 @@ function RegistroForm() {
               {errors.email && <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4 }}>{errors.email}</div>}
             </div>
 
+            {/* Contraseña */}
             <div>
               <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 5 }}>
                 Contraseña
@@ -217,31 +343,21 @@ function RegistroForm() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(v => !v)}
+                  tabIndex={-1}
+                  title={showPassword ? "Ocultar" : "Mostrar"}
                   style={{
                     position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
                     background: "none", border: "none", cursor: "pointer",
                     color: "var(--text-3)", padding: 2, display: "flex", alignItems: "center",
                   }}
-                  tabIndex={-1}
-                  title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                 >
-                  {showPassword ? (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-                      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-                      <line x1="1" y1="1" x2="23" y2="23"/>
-                    </svg>
-                  ) : (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                      <circle cx="12" cy="12" r="3"/>
-                    </svg>
-                  )}
+                  <EyeIcon open={showPassword} />
                 </button>
               </div>
               {errors.password && <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4 }}>{errors.password}</div>}
             </div>
 
+            {/* Repetir contraseña */}
             <div>
               <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 5 }}>
                 Repetir contraseña
@@ -258,31 +374,21 @@ function RegistroForm() {
                 <button
                   type="button"
                   onClick={() => setShowConfirm(v => !v)}
+                  tabIndex={-1}
+                  title={showConfirm ? "Ocultar" : "Mostrar"}
                   style={{
                     position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
                     background: "none", border: "none", cursor: "pointer",
                     color: "var(--text-3)", padding: 2, display: "flex", alignItems: "center",
                   }}
-                  tabIndex={-1}
-                  title={showConfirm ? "Ocultar contraseña" : "Mostrar contraseña"}
                 >
-                  {showConfirm ? (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-                      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-                      <line x1="1" y1="1" x2="23" y2="23"/>
-                    </svg>
-                  ) : (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                      <circle cx="12" cy="12" r="3"/>
-                    </svg>
-                  )}
+                  <EyeIcon open={showConfirm} />
                 </button>
               </div>
               {errors.confirm && <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4 }}>{errors.confirm}</div>}
             </div>
 
+            {/* Ubicación */}
             <div>
               <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 5 }}>
                 Tu zona
@@ -301,17 +407,15 @@ function RegistroForm() {
 
             <button
               type="submit"
-              disabled={loading}
               style={{
                 background: "var(--green)", color: "#fff",
                 border: "none", borderRadius: 6,
                 padding: "11px", fontSize: 14, fontWeight: 500,
-                cursor: loading ? "default" : "pointer",
-                opacity: loading ? 0.7 : 1,
+                cursor: "pointer",
                 marginTop: 4,
               }}
             >
-              {loading ? "Creando cuenta..." : "Crear cuenta"}
+              Siguiente →
             </button>
           </form>
 

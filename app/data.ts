@@ -12,4 +12,9 @@ export const categories = [
   "Bebés",
   "Jardín",
   "Arte",
+  "Comida y bebida",
+  "Farmacia",
+  "Kiosco",
+  "Ferretería",
+  "Servicios",
 ];

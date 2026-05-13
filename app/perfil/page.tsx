@@ -9,6 +9,8 @@ import { getLocalProducts, deleteLocalProduct, updateProduct, getBusinessStats, 
 import { getReviewsForSeller, type Review } from "../lib/reviews";
 import { useToast } from "../components/ToastProvider";
 import { usePageTitle } from "../lib/usePageTitle";
+import BotonPago from "../components/BotonPago";
+import { PRECIOS } from "../api/pagos/preferencia/route";
 
 // ─── Phone verification ───────────────────────────────────────────────────────
 
@@ -813,11 +815,7 @@ const BUSINESS_CATEGORIES = [
   "Vehículos", "Alimentos", "Servicios", "Arte y coleccionables", "Otro",
 ];
 
-// Precio mensual en ARS (mock — fácil de cambiar)
-const PLAN_PRICE = "$4.999";
-const PLAN_PRICE_LABEL = "/ mes";
-
-type BizStep = "closed" | "pricing" | "paying" | "form";
+type BizStep = "closed" | "pricing" | "form";
 
 function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => void }) {
   // Ya pagó → empieza directo en form si está abierto
@@ -834,13 +832,6 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
   const [bCuit,  setBCuit]  = useState(user.businessCuit     ?? "");
   const [slugErr, setSlugErr] = useState("");
 
-  // Mock payment
-  const [cardNum,  setCardNum]  = useState("");
-  const [cardName, setCardName] = useState("");
-  const [cardExp,  setCardExp]  = useState("");
-  const [cardCvv,  setCardCvv]  = useState("");
-  const [payErr,   setPayErr]   = useState("");
-  const [payLoading, setPayLoading] = useState(false);
 
   function generateSlug(name: string) {
     return name
@@ -857,24 +848,6 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
     else                   { setStep("pricing"); }
   }
 
-  // Simula el proceso de pago (reemplazar con MercadoPago/Stripe)
-  async function handlePay() {
-    setPayErr("");
-    const digitsOnly = cardNum.replace(/\s/g, "");
-    if (digitsOnly.length < 16)      { setPayErr("Número de tarjeta inválido."); return; }
-    if (!cardName.trim())            { setPayErr("Ingresá el nombre del titular."); return; }
-    if (cardExp.length < 5)          { setPayErr("Fecha de vencimiento inválida."); return; }
-    if (cardCvv.length < 3)          { setPayErr("CVV inválido."); return; }
-
-    setPayLoading(true);
-    // Simulamos latencia de procesamiento
-    await new Promise(r => setTimeout(r, 1800));
-    // Marcar como pagado en Supabase
-    await updateUser(user.id, { businessPaid: true, isBusiness: true });
-    setPayLoading(false);
-    setStep("form");
-    onSaved(); // recargar user
-  }
 
   async function handleSave() {
     // Validar slug
@@ -952,8 +925,8 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
               Plan Negocio
             </div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 14 }}>
-              <span style={{ fontSize: 32, fontWeight: 800, color: "var(--text)", letterSpacing: -1 }}>{PLAN_PRICE}</span>
-              <span style={{ fontSize: 13, color: "var(--text-3)" }}>{PLAN_PRICE_LABEL}</span>
+              <span style={{ fontSize: 32, fontWeight: 800, color: "var(--text)", letterSpacing: -1 }}>${PRECIOS.negocio_mes.toLocaleString("es-AR")}</span>
+              <span style={{ fontSize: 13, color: "var(--text-3)" }}>/ mes</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
               {[
@@ -972,133 +945,20 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
             </div>
           </div>
 
-          <button
-            onClick={() => setStep("paying")}
-            style={{
-              width: "100%", padding: "11px", background: "var(--green)", color: "#fff",
-              border: "none", borderRadius: 6, fontSize: 13, fontWeight: 600,
-              cursor: "pointer", letterSpacing: -0.1,
-            }}
-          >
-            Suscribirme — {PLAN_PRICE}{PLAN_PRICE_LABEL}
-          </button>
+          <BotonPago
+            tipo="negocio_mes"
+            userId={user.id}
+            label="Activar Modo Negocio — 1 mes"
+            descripcion="Pago único mensual · Se activa de inmediato"
+            precio={5000}
+          />
           <div style={{ fontSize: 11, color: "var(--text-3)", textAlign: "center", marginTop: 8 }}>
-            Podés cancelar cuando quieras · Pago seguro
+            Pagás con Mercado Pago · Tarjeta, débito o saldo MP
           </div>
         </div>
       )}
 
       {/* ── STEP: paying ── */}
-      {step === "paying" && (
-        <div style={{ marginTop: 18 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 14, display: "flex", alignItems: "center", gap: 6 }}>
-            🔒 Pago seguro
-            <span style={{ fontSize: 11, fontWeight: 400, color: "var(--text-3)" }}>— modo demo</span>
-          </div>
-
-          {/* Tarjeta visual */}
-          <div style={{
-            background: "linear-gradient(135deg, #1d4ed8 0%, #4f46e5 100%)",
-            borderRadius: 12, padding: "18px 20px", marginBottom: 16,
-            color: "#fff", fontSize: 13, minHeight: 90,
-            display: "flex", flexDirection: "column", justifyContent: "space-between",
-          }}>
-            <div style={{ fontSize: 16, letterSpacing: 3, fontWeight: 600, fontFamily: "monospace" }}>
-              {cardNum || "•••• •••• •••• ••••"}
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", opacity: 0.85, fontSize: 12 }}>
-              <span>{cardName || "NOMBRE APELLIDO"}</span>
-              <span>{cardExp || "MM/AA"}</span>
-            </div>
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 500, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Número de tarjeta</label>
-              <input
-                value={cardNum}
-                onChange={e => {
-                  const v = e.target.value.replace(/\D/g, "").slice(0, 16);
-                  setCardNum(v.replace(/(.{4})/g, "$1 ").trim());
-                  setPayErr("");
-                }}
-                placeholder="1234 5678 9012 3456"
-                inputMode="numeric"
-                style={{ ...fieldInput, letterSpacing: 2 }}
-              />
-            </div>
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 500, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Nombre en la tarjeta</label>
-              <input
-                value={cardName}
-                onChange={e => { setCardName(e.target.value.toUpperCase()); setPayErr(""); }}
-                placeholder="NOMBRE APELLIDO"
-                style={{ ...fieldInput, textTransform: "uppercase" as const }}
-              />
-            </div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 12, fontWeight: 500, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Vencimiento</label>
-                <input
-                  value={cardExp}
-                  onChange={e => {
-                    let v = e.target.value.replace(/\D/g, "").slice(0, 4);
-                    if (v.length > 2) v = v.slice(0, 2) + "/" + v.slice(2);
-                    setCardExp(v); setPayErr("");
-                  }}
-                  placeholder="MM/AA"
-                  inputMode="numeric"
-                  style={{ ...fieldInput }}
-                />
-              </div>
-              <div style={{ width: 90 }}>
-                <label style={{ fontSize: 12, fontWeight: 500, color: "var(--text-2)", display: "block", marginBottom: 4 }}>CVV</label>
-                <input
-                  value={cardCvv}
-                  onChange={e => { setCardCvv(e.target.value.replace(/\D/g, "").slice(0, 4)); setPayErr(""); }}
-                  placeholder="123"
-                  inputMode="numeric"
-                  type="password"
-                  style={{ ...fieldInput }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {payErr && (
-            <div style={{ fontSize: 12, color: "#dc2626", marginTop: 10, padding: "7px 10px", background: "#fef2f2", borderRadius: 6, border: "1px solid #fecaca" }}>
-              {payErr}
-            </div>
-          )}
-
-          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-            <button
-              onClick={handlePay}
-              disabled={payLoading}
-              style={{
-                flex: 2, padding: "11px", background: payLoading ? "var(--border)" : "var(--green)",
-                color: payLoading ? "var(--text-3)" : "#fff",
-                border: "none", borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: payLoading ? "default" : "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              }}
-            >
-              {payLoading ? (
-                <>
-                  <div style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid var(--text-3)", borderTopColor: "var(--green)", animation: "spin 0.7s linear infinite" }} />
-                  Procesando...
-                </>
-              ) : `Pagar ${PLAN_PRICE}`}
-            </button>
-            <button onClick={() => setStep("pricing")} style={{ ...ghostBtn, flex: 1 }} disabled={payLoading}>
-              Atrás
-            </button>
-          </div>
-          <div style={{ fontSize: 11, color: "var(--text-3)", textAlign: "center", marginTop: 8 }}>
-            Modo demo — no se realizará ningún cobro real
-          </div>
-        </div>
-      )}
-
       {/* ── STEP: form (ya pagó) ── */}
       {step === "form" && (
         <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1107,7 +967,6 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
           <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", background: "var(--green-subtle)", borderRadius: 7, border: "1px solid #c5e8dc" }}>
             <span style={{ color: "var(--green)", fontWeight: 700 }}>✓</span>
             <span style={{ fontSize: 13, color: "var(--green)", fontWeight: 600 }}>Suscripción activa</span>
-            <span style={{ fontSize: 12, color: "var(--text-3)", marginLeft: "auto" }}>{PLAN_PRICE}{PLAN_PRICE_LABEL}</span>
           </div>
 
           <div>

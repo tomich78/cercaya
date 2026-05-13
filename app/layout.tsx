@@ -7,10 +7,19 @@ import FloatingChat from "./components/FloatingChat";
 
 export const metadata: Metadata = {
   title: "EstamosCerca — Compra y vende cerca tuyo",
-  description: "La app de compra-venta local de Argentina",
+  description: "Comprá y vendé productos cerca tuyo. Conectamos vecinos del mismo barrio sin envíos ni comisiones.",
   icons: {
-    icon: "/logo.png",
-    apple: "/logo.png",
+    icon: "/Logo.png",
+    apple: "/Logo.png",
+  },
+  openGraph: {
+    title: "EstamosCerca — Compra y vende cerca tuyo",
+    description: "Comprá y vendé productos cerca tuyo. Conectamos vecinos del mismo barrio sin envíos ni comisiones.",
+    url: "https://cercaya-gamma.vercel.app",
+    siteName: "EstamosCerca",
+    images: [{ url: "/Logo.png", width: 512, height: 512, alt: "EstamosCerca" }],
+    locale: "es_AR",
+    type: "website",
   },
 };
 

@@ -323,18 +323,21 @@ function HomeInner() {
         </div>
 
         {/* Categorías */}
-        <div style={{ display: "flex", gap: 6, marginBottom: 10, overflowX: "auto", paddingBottom: 2 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 6px", marginBottom: 12 }}>
           {categories.map(cat => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
               style={{
-                padding: "6px 14px", borderRadius: 999, border: "1px solid",
-                borderColor: activeCategory === cat ? "var(--green)" : "var(--border)",
-                background:  activeCategory === cat ? "var(--green-subtle)" : "var(--surface)",
-                color:       activeCategory === cat ? "var(--green)" : "var(--text-2)",
+                padding: "4px 11px",
+                borderRadius: 999,
+                border: "none",
+                background:  activeCategory === cat ? "var(--green)" : "transparent",
+                color:       activeCategory === cat ? "#fff" : "var(--text-3)",
                 fontWeight:  activeCategory === cat ? 600 : 400,
-                fontSize: 13, cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.12s",
+                fontSize: 12,
+                cursor: "pointer",
+                transition: "all 0.12s",
               }}
             >
               {cat}
@@ -645,7 +648,6 @@ function HomeInner() {
             ? Array.from({ length: PAGE_SIZE }).map((_, i) => <ProductCardSkeleton key={i} />)
             : visibleProducts.flatMap(({ _km: _ignored, ...p }, idx) => {
                 const items = [<ProductCard key={p.id} product={p} />];
-                // Slot de publicidad cada 4 productos
                 if ((idx + 1) % 4 === 0) {
                   items.push(<AdSlot key={`ad-${idx}`} />);
                 }

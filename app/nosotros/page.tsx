@@ -12,10 +12,10 @@ const PHOTOS = {
 };
 
 const STATS = [
-  { value: "+5.000", label: "usuarios activos" },
-  { value: "+12.000", label: "publicaciones" },
-  { value: "180+", label: "ciudades y barrios" },
-  { value: "4.8 ★", label: "calificación promedio" },
+  { value: "100%", label: "gratuito para publicar" },
+  { value: "0", label: "comisiones por venta" },
+  { value: "🇦🇷", label: "hecho en Argentina" },
+  { value: "2025", label: "año de lanzamiento" },
 ];
 
 const VALUES = [
@@ -199,7 +199,7 @@ export default function NosotrosPage() {
                 Somos vecinos ayudando a vecinos
               </div>
               <div style={{ fontSize: 14, opacity: 0.8 }}>
-                Más de 5.000 personas ya forman parte de la comunidad
+                Una comunidad que acaba de arrancar. Sumate desde el primer día.
               </div>
             </div>
           </div>
