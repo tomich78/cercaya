@@ -27,6 +27,7 @@ export interface LocalUser {
   businessCuit?: string;          // CUIT ingresado
   businessCuitVerified: boolean;  // checksum válido
   businessSlug?: string;          // URL pública: /negocio/[slug]
+  businessCoverUrl?: string;      // imagen de portada de la página del negocio
   createdAt: string;
 }
 
@@ -105,6 +106,7 @@ function rowToUser(profile: Record<string, unknown>, email: string): LocalUser {
     businessCuit:         profile.business_cuit as string | undefined,
     businessCuitVerified: (profile.business_cuit_verified as boolean) ?? false,
     businessSlug:         profile.business_slug as string | undefined,
+    businessCoverUrl:     profile.business_cover_url as string | undefined,
     createdAt:            profile.created_at as string,
   };
 }
@@ -218,6 +220,7 @@ export async function updateUser(
     businessCuit: string;
     businessCuitVerified: boolean;
     businessSlug: string;
+    businessCoverUrl: string;
   }>,
 ): Promise<void> {
   const row: Record<string, unknown> = {};
@@ -241,7 +244,18 @@ export async function updateUser(
   if (updates.businessCuit         !== undefined) row.business_cuit           = updates.businessCuit;
   if (updates.businessCuitVerified !== undefined) row.business_cuit_verified  = updates.businessCuitVerified;
   if (updates.businessSlug        !== undefined) row.business_slug           = updates.businessSlug;
+  if (updates.businessCoverUrl    !== undefined) row.business_cover_url      = updates.businessCoverUrl;
   await supabase.from("profiles").update(row).eq("id", userId);
+}
+
+// ── Business cover upload ─────────────────────────────────────
+
+export async function uploadBusinessCover(userId: string, file: File): Promise<string> {
+  const ext  = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+  const path = `${userId}/cover.${ext}`;
+  await supabase.storage.from("avatars").upload(path, file, { upsert: true, cacheControl: "3600" });
+  const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+  return `${data.publicUrl}?t=${Date.now()}`;
 }
 
 // ── DNI document upload ───────────────────────────────────────

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
 import LocationInput from "../components/LocationInput";
-import { getCurrentUser, updateUser, uploadAvatar, uploadDniDoc, validateCuit, formatCuit, type LocalUser } from "../lib/auth";
+import { getCurrentUser, updateUser, uploadAvatar, uploadDniDoc, uploadBusinessCover, validateCuit, formatCuit, type LocalUser } from "../lib/auth";
 import { getLocalProducts, deleteLocalProduct, updateProduct, getBusinessStats, type LocalProduct, type BusinessStats } from "../lib/storage";
 import { getReviewsForSeller, type Review } from "../lib/reviews";
 import { useToast } from "../components/ToastProvider";
@@ -679,6 +679,7 @@ export default function PerfilPage() {
                 <ProductMini
                   key={p.id}
                   product={p}
+                  isBusiness={user.isBusiness && user.businessPaid}
                   onDelete={async () => {
                     await deleteLocalProduct(p.id);
                     setMyProducts(prev => prev.filter(x => x.id !== p.id));
@@ -689,6 +690,12 @@ export default function PerfilPage() {
                     await updateProduct(p.id, { sold: newSold });
                     setMyProducts(prev => prev.map(x => x.id === p.id ? { ...x, sold: newSold } : x));
                     toast(newSold ? "Marcado como vendido" : "Vuelto a activar", "info");
+                  }}
+                  onTogglePinned={async () => {
+                    const newPinned = !p.pinned;
+                    await updateProduct(p.id, { pinned: newPinned });
+                    setMyProducts(prev => prev.map(x => x.id === p.id ? { ...x, pinned: newPinned } : x));
+                    toast(newPinned ? "📌 Producto fijado en tu página" : "Producto desfijado", "info");
                   }}
                 />
               ))}
@@ -831,6 +838,8 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
   const [bDesc,  setBDesc]  = useState(user.businessDesc     ?? "");
   const [bCuit,  setBCuit]  = useState(user.businessCuit     ?? "");
   const [slugErr, setSlugErr] = useState("");
+  const [coverUrl,    setCoverUrl]    = useState(user.businessCoverUrl ?? "");
+  const [coverLoading,setCoverLoading]= useState(false);
 
 
   function generateSlug(name: string) {
@@ -979,6 +988,61 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
             </button>
           </div>
 
+          {/* ── Imagen de portada ── */}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--text-2)", display: "block", marginBottom: 6 }}>
+              Imagen de portada
+            </label>
+            {coverUrl && (
+              <div style={{ position: "relative", marginBottom: 8, borderRadius: 8, overflow: "hidden", height: 120 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={coverUrl} alt="Portada" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                <button
+                  onClick={async () => {
+                    await updateUser(user.id, { businessCoverUrl: "" });
+                    setCoverUrl("");
+                  }}
+                  style={{
+                    position: "absolute", top: 6, right: 6,
+                    background: "rgba(0,0,0,0.55)", border: "none", color: "#fff",
+                    borderRadius: 4, padding: "3px 8px", fontSize: 11, cursor: "pointer",
+                  }}
+                >
+                  Quitar
+                </button>
+              </div>
+            )}
+            <label style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "8px 12px", border: "1.5px dashed var(--border)",
+              borderRadius: 6, cursor: coverLoading ? "default" : "pointer",
+              fontSize: 12, color: "var(--text-3)",
+              background: "var(--bg)",
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+              {coverLoading ? "Subiendo..." : coverUrl ? "Cambiar portada" : "Subir imagen de portada"}
+              <input
+                type="file" accept="image/*" style={{ display: "none" }}
+                disabled={coverLoading}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setCoverLoading(true);
+                  const url = await uploadBusinessCover(user.id, file);
+                  await updateUser(user.id, { businessCoverUrl: url });
+                  setCoverUrl(url);
+                  setCoverLoading(false);
+                }}
+              />
+            </label>
+            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>
+              Se muestra como banner en la parte superior de tu página de negocio. Recomendado: 1200×300px.
+            </div>
+          </div>
+
           <div>
             <label style={{ fontSize: 12, fontWeight: 500, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Nombre del negocio</label>
             <input
@@ -1118,12 +1182,16 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
 
 function ProductMini({
   product,
+  isBusiness,
   onDelete,
   onToggleSold,
+  onTogglePinned,
 }: {
   product: LocalProduct;
+  isBusiness?: boolean;
   onDelete: () => void;
   onToggleSold: () => void;
+  onTogglePinned?: () => void;
 }) {
   const [confirm, setConfirm] = useState(false);
   const coverImage = product.images?.[0];
@@ -1188,6 +1256,19 @@ function ProductMini({
         >
           {product.sold ? "Activar" : "Marcar vendido"}
         </button>
+        {isBusiness && !product.sold && onTogglePinned && (
+          <button
+            onClick={onTogglePinned}
+            title={product.pinned ? "Quitar de fijados" : "Fijar en tu página de negocio"}
+            style={{
+              fontSize: 11, fontWeight: product.pinned ? 700 : 400,
+              color: product.pinned ? "#d97706" : "var(--text-3)",
+              background: "none", border: "none", cursor: "pointer", padding: 0,
+            }}
+          >
+            {product.pinned ? "📌 Fijado" : "📌 Fijar"}
+          </button>
+        )}
       </div>
 
       {/* Acciones — fila 2: eliminar */}

@@ -241,14 +241,16 @@ function NegociosTab({ acting, setActing }: { acting: string | null; setActing: 
     })();
   }, []);
 
-  async function cancelBusiness(userId: string) {
+  async function cancelBusiness(userId: string, name: string) {
+    if (!confirm(`¿Cancelar el Modo Negocio de "${name}"? Se desactivará de inmediato.`)) return;
     setActing(userId);
     const ok = await adminAction("cancel_business", userId);
     if (ok) setRows(prev => prev.filter(r => r.id !== userId));
     setActing(null);
   }
 
-  async function activateBusiness(userId: string) {
+  async function activateBusiness(userId: string, name: string) {
+    if (!confirm(`¿Activar el Modo Negocio de "${name}" por 30 días?`)) return;
     setActing(userId);
     const ok = await adminAction("activate_business", userId);
     if (ok) setRows(prev => prev.map(r => r.id === userId ? { ...r, paid: true } : r));
@@ -290,8 +292,8 @@ function NegociosTab({ acting, setActing }: { acting: string | null; setActing: 
               <td style={{ padding: "10px 12px" }}>
                 <div style={{ display: "flex", gap: 6 }}>
                   {r.paid
-                    ? <ActionBtn label="Cancelar" color="red" small loading={acting === r.id} onClick={() => cancelBusiness(r.id)} />
-                    : <ActionBtn label="Activar" color="green" small loading={acting === r.id} onClick={() => activateBusiness(r.id)} />
+                    ? <ActionBtn label="Cancelar" color="red" small loading={acting === r.id} onClick={() => cancelBusiness(r.id, r.name)} />
+                    : <ActionBtn label="Activar" color="green" small loading={acting === r.id} onClick={() => activateBusiness(r.id, r.name)} />
                   }
                 </div>
               </td>
@@ -325,7 +327,8 @@ function DestacadosTab({ acting, setActing }: { acting: string | null; setActing
     })();
   }, []);
 
-  async function unfeature(productId: number) {
+  async function unfeature(productId: number, title: string) {
+    if (!confirm(`¿Quitar el destacado de "${title}"?`)) return;
     setActing(String(productId));
     const ok = await adminAction("unfeature_product", undefined, productId);
     if (ok) setRows(prev => prev.filter(r => r.id !== productId));
@@ -361,7 +364,7 @@ function DestacadosTab({ acting, setActing }: { acting: string | null; setActing
                   </span>
                 </td>
                 <td style={{ padding: "10px 12px" }}>
-                  <ActionBtn label="Quitar" color="red" small loading={acting === String(r.id)} onClick={() => unfeature(r.id)} />
+                  <ActionBtn label="Quitar" color="red" small loading={acting === String(r.id)} onClick={() => unfeature(r.id, r.title)} />
                 </td>
               </tr>
             );
@@ -396,7 +399,8 @@ function BannersTab({ acting, setActing }: { acting: string | null; setActing: (
     })();
   }, []);
 
-  async function deactivate(bannerId: number) {
+  async function deactivate(bannerId: number, userName: string) {
+    if (!confirm(`¿Desactivar el banner de "${userName}"?`)) return;
     setActing(String(bannerId));
     const ok = await adminAction("deactivate_banner", undefined, bannerId);
     if (ok) setRows(prev => prev.filter(r => r.id !== bannerId));
@@ -432,7 +436,7 @@ function BannersTab({ acting, setActing }: { acting: string | null; setActing: (
                 </td>
                 <td style={{ padding: "10px 12px", fontSize: 11, color: "var(--text-3)" }}>{r.paymentId}</td>
                 <td style={{ padding: "10px 12px" }}>
-                  <ActionBtn label="Desactivar" color="red" small loading={acting === String(r.id)} onClick={() => deactivate(r.id)} />
+                  <ActionBtn label="Desactivar" color="red" small loading={acting === String(r.id)} onClick={() => deactivate(r.id, r.userName)} />
                 </td>
               </tr>
             );

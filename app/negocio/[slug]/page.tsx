@@ -20,6 +20,7 @@ interface BusinessProfile {
   businessCuitVerified: boolean;
   businessSlug: string;
   avatarUrl?: string;
+  coverUrl?: string;
   location?: string;
   createdAt: string;
 }
@@ -48,6 +49,7 @@ function rowToProduct(row: Record<string, unknown>): LocalProduct {
     lng:          row.lng as number | undefined,
     sold:         (row.sold as boolean) ?? false,
     featured:     (row.featured as boolean) ?? false,
+    pinned:       (row.pinned as boolean) ?? false,
     sellerId:     0,
     userId:       row.user_id as string | undefined,
     createdAt:    row.created_at as string,
@@ -106,7 +108,7 @@ export default function NegocioPage() {
       // 1. Buscar perfil por slug
       const { data: profile } = await supabase
         .from("profiles")
-        .select("id, name, business_name, business_category, business_hours, business_desc, business_cuit_verified, business_slug, avatar_url, location, created_at")
+        .select("id, name, business_name, business_category, business_hours, business_desc, business_cuit_verified, business_slug, avatar_url, business_cover_url, location, created_at")
         .eq("business_slug", slug)
         .eq("is_business", true)
         .eq("business_paid", true)
@@ -127,6 +129,7 @@ export default function NegocioPage() {
         businessCuitVerified: (profile.business_cuit_verified as boolean) ?? false,
         businessSlug:         profile.business_slug as string,
         avatarUrl:            profile.avatar_url as string | undefined,
+        coverUrl:             profile.business_cover_url as string | undefined,
         location:             profile.location as string | undefined,
         createdAt:            profile.created_at as string,
       });
@@ -137,7 +140,8 @@ export default function NegocioPage() {
         .select("*")
         .eq("user_id", profile.id as string)
         .eq("sold", false)
-        .order("featured", { ascending: false })
+        .order("pinned",    { ascending: false })
+        .order("featured",  { ascending: false })
         .order("created_at", { ascending: false });
 
       setProducts((prods ?? []).map(rowToProduct));
@@ -163,10 +167,29 @@ export default function NegocioPage() {
 
   const biz_ = biz!;
   const initials = biz_.businessName.slice(0, 2).toUpperCase();
+  const pinnedProducts = products.filter(p => p.pinned);
+  const restProducts   = products.filter(p => !p.pinned);
 
   return (
     <div>
       <Navbar />
+
+      {/* ── Portada / Cover ── */}
+      {biz_.coverUrl && (
+        <div style={{
+          width: "100%", height: 220, overflow: "hidden",
+          background: "var(--surface)",
+          borderBottom: "1px solid var(--border)",
+        }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={biz_.coverUrl}
+            alt={`Portada de ${biz_.businessName}`}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        </div>
+      )}
+
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "2rem 1.5rem" }}>
 
         <Link href="/" style={{ fontSize: 13, color: "var(--text-3)" }}>← Inicio</Link>
@@ -267,10 +290,36 @@ export default function NegocioPage() {
           )}
         </div>
 
-        {/* ── Productos ── */}
+        {/* ── Productos fijados ── */}
+        {pinnedProducts.length > 0 && (
+          <div style={{ marginBottom: 28 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: -0.2, marginBottom: 16, display: "flex", alignItems: "center", gap: 6 }}>
+              <span>📌</span> Destacados por el negocio
+            </div>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+              gap: 14,
+            }}>
+              {pinnedProducts.map(p => (
+                <ProductCard
+                  key={p.id}
+                  product={{
+                    ...p,
+                    sellerIsBusiness:   true,
+                    sellerCuitVerified: biz_.businessCuitVerified,
+                    sellerBusinessSlug: biz_.businessSlug,
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Todas las publicaciones ── */}
         <div>
           <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: -0.2, marginBottom: 16 }}>
-            Publicaciones activas
+            {pinnedProducts.length > 0 ? "Más publicaciones" : "Publicaciones activas"}
             <span style={{ fontSize: 12, fontWeight: 400, color: "var(--text-3)", marginLeft: 6 }}>
               ({products.length})
             </span>
@@ -284,13 +333,13 @@ export default function NegocioPage() {
             }}>
               Este negocio no tiene publicaciones activas por el momento.
             </div>
-          ) : (
+          ) : restProducts.length === 0 ? null : (
             <div style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
               gap: 14,
             }}>
-              {products.map(p => (
+              {restProducts.map(p => (
                 <ProductCard
                   key={p.id}
                   product={{

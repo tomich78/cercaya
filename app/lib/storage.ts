@@ -17,6 +17,7 @@ export interface LocalProduct {
   lng?: number;
   sold?: boolean;
   featured?: boolean;            // ⭐ publicación destacada
+  pinned?: boolean;              // 📌 fijado en la página del negocio
   featuredUntil?: string;        // fecha de expiración del destacado
   views?: number;                // vistas del producto
   negotiable?: boolean;          // precio negociable
@@ -50,6 +51,7 @@ function rowToProduct(row: Record<string, unknown>): LocalProduct {
     lng:           row.lng as number | undefined,
     sold:          (row.sold as boolean) ?? false,
     featured:      (row.featured as boolean) ?? false,
+    pinned:        (row.pinned as boolean) ?? false,
     featuredUntil: row.featured_until as string | undefined,
     views:         (row.views as number) ?? 0,
     negotiable:    (row.negotiable as boolean) ?? false,
@@ -170,6 +172,7 @@ export async function updateProduct(
     images: string[];
     lat: number | null;
     lng: number | null;
+    pinned: boolean;
   }>,
 ): Promise<void> {
   const row: Record<string, unknown> = {};
@@ -187,6 +190,7 @@ export async function updateProduct(
   if (updates.images        !== undefined) row.images         = updates.images;
   if (updates.lat           !== undefined) row.lat            = updates.lat;
   if (updates.lng           !== undefined) row.lng            = updates.lng;
+  if (updates.pinned        !== undefined) row.pinned         = updates.pinned;
   await supabase.from("products").update(row).eq("id", id);
 }
 
