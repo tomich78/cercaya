@@ -967,6 +967,16 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
           <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", background: "var(--green-subtle)", borderRadius: 7, border: "1px solid #c5e8dc" }}>
             <span style={{ color: "var(--green)", fontWeight: 700 }}>✓</span>
             <span style={{ fontSize: 13, color: "var(--green)", fontWeight: 600 }}>Suscripción activa</span>
+            <button
+              onClick={async () => {
+                if (!confirm("¿Cancelar el Modo Negocio? Se desactivará al instante.")) return;
+                await updateUser(user.id, { businessPaid: false, isBusiness: false });
+                onSaved();
+              }}
+              style={{ marginLeft: "auto", fontSize: 11, color: "#dc2626", background: "none", border: "1px solid #dc2626", borderRadius: 4, padding: "2px 8px", cursor: "pointer" }}
+            >
+              Cancelar
+            </button>
           </div>
 
           <div>
