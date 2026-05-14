@@ -27,8 +27,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Missing userId" }, { status: 400 });
   }
 
-  const baseUrl   = process.env.NEXT_PUBLIC_SITE_URL!;
-  const appId     = process.env.MP_APP_ID!;
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://cercaya-gamma.vercel.app";
+  const appId   = process.env.MP_APP_ID           ?? "8456203604743632";
   const redirectUri = `${baseUrl}/api/mp/callback`;
 
   const authUrl =
