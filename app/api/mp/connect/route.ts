@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
   }
 
   const baseUrl     = process.env.NEXT_PUBLIC_SITE_URL ?? "https://cercaya-gamma.vercel.app";
-  const appId       = process.env.MP_APP_ID            ?? "8456203604743632";
+  const appId       = process.env.MP_APP_ID            ?? "861893684920466";
   const redirectUri = `${baseUrl}/api/mp/callback`;
 
   const codeVerifier  = generateCodeVerifier();
