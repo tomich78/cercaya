@@ -49,7 +49,6 @@ export async function POST(req: NextRequest) {
     const preference = new Preference(client);
     const baseUrl    = process.env.NEXT_PUBLIC_SITE_URL!;
 
-    // DEBUG: preferencia mínima para aislar qué campo causa el error en checkout
     const result = await preference.create({
       body: {
         items: [{
@@ -59,10 +58,22 @@ export async function POST(req: NextRequest) {
           unit_price:  amount,
           currency_id: "ARS",
         }],
+        metadata: {
+          tipo:            "pago_producto",
+          seller_id:       sellerId,
+          buyer_id:        buyerId,
+          product_id:      productId,
+          conversation_id: conversationId,
+        },
+        back_urls: {
+          success: `${baseUrl}/pago/exito?tipo=pago_producto`,
+          failure: `${baseUrl}/pago/error`,
+          pending: `${baseUrl}/pago/pendiente`,
+        },
+        auto_return:      "approved",
+        notification_url: `${baseUrl}/api/pagos/webhook`,
       },
     });
-
-    console.log("MP preference created:", { id: result.id, init_point: result.init_point });
 
     return NextResponse.json({
       initPoint:    result.init_point,
