@@ -44,7 +44,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const client     = new MercadoPagoConfig({ accessToken: seller.mp_access_token });
+    // TEST: usando token de plataforma para aislar si el problema es el OAuth token
+    const client     = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! });
     const preference = new Preference(client);
     const baseUrl    = process.env.NEXT_PUBLIC_SITE_URL!;
 
