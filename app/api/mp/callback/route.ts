@@ -19,19 +19,21 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    const params = new URLSearchParams({
+      grant_type:    "authorization_code",
+      client_id:     appId,
+      client_secret: clientSecret,
+      code,
+      redirect_uri:  `${baseUrl}/api/mp/callback`,
+    });
+
     const res = await fetch("https://api.mercadopago.com/oauth/token", {
       method: "POST",
       headers: {
-        "Content-Type":  "application/json",
-        "Accept":        "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept":       "application/json",
       },
-      body: JSON.stringify({
-        client_id:     appId,
-        client_secret: clientSecret,
-        code,
-        grant_type:    "authorization_code",
-        redirect_uri:  `${baseUrl}/api/mp/callback`,
-      }),
+      body: params.toString(),
     });
 
     if (!res.ok) {
