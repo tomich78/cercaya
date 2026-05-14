@@ -31,30 +31,24 @@ export async function GET(req: NextRequest) {
   try {
     const params = new URLSearchParams({
       grant_type:   "authorization_code",
-      client_id:    appId,
       code,
       redirect_uri: `${baseUrl}/api/mp/callback`,
     });
 
-    // Incluir client_secret solo si está disponible
-    if (clientSecret) params.set("client_secret", clientSecret);
-
-    // PKCE: incluir code_verifier si existe (puede reemplazar o complementar client_secret)
+    // PKCE: incluir code_verifier si existe
     if (codeVerifier) params.set("code_verifier", codeVerifier);
 
-    console.log("MP token exchange params:", {
-      grant_type:    "authorization_code",
-      client_id:     appId,
-      has_secret:    !!clientSecret,
-      has_verifier:  !!codeVerifier,
-      redirect_uri:  `${baseUrl}/api/mp/callback`,
-    });
+    // Credenciales via Basic Auth header (RFC 6749 §2.3.1)
+    const basicAuth = Buffer.from(`${appId}:${clientSecret ?? ""}`).toString("base64");
+
+    console.log("MP token exchange — usando Basic Auth header, has_verifier:", !!codeVerifier);
 
     const res = await fetch("https://api.mercadopago.com/oauth/token", {
       method: "POST",
       headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Accept":       "application/json",
+        "Content-Type":  "application/x-www-form-urlencoded",
+        "Accept":        "application/json",
+        "Authorization": `Basic ${basicAuth}`,
       },
       body: params.toString(),
     });
