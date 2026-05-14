@@ -353,17 +353,24 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
       .on("postgres_changes", {
         event: "INSERT", schema: "public",
         table: "messages", filter: `conversation_id=eq.${conv.id}`,
-      }, (payload) => {
-        const raw = payload.new as Record<string, unknown>;
+      }, async (payload) => {
+        const rawId = (payload.new as Record<string, unknown>).id as number;
+        // Refetch el mensaje completo para garantizar type y metadata
+        const { data } = await supabase
+          .from("messages")
+          .select("*")
+          .eq("id", rawId)
+          .single();
+        if (!data) return;
         const incoming: Message = {
-          id:             raw.id as number,
-          conversationId: raw.conversation_id as number,
-          senderId:       raw.sender_id as string,
-          senderInitials: raw.sender_initials as string,
-          text:           raw.text as string,
-          type:           (raw.type as Message["type"]) ?? "text",
-          metadata:       raw.metadata as Message["metadata"] ?? undefined,
-          createdAt:      raw.created_at as string,
+          id:             data.id as number,
+          conversationId: data.conversation_id as number,
+          senderId:       data.sender_id as string,
+          senderInitials: data.sender_initials as string,
+          text:           data.text as string,
+          type:           (data.type as Message["type"]) ?? "text",
+          metadata:       (data.metadata as Message["metadata"]) ?? undefined,
+          createdAt:      data.created_at as string,
         };
         setMessages(prev => prev.some(m => m.id === incoming.id) ? prev : [...prev, incoming]);
       })
