@@ -10,9 +10,9 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const code   = searchParams.get("code");
   const userId = searchParams.get("state"); // pasamos userId como state en la URL de autorización
-  const baseUrl     = process.env.NEXT_PUBLIC_SITE_URL  ?? "https://cercaya-gamma.vercel.app";
-  const appId       = process.env.MP_APP_ID             ?? "8456203604743632";
-  const clientSecret = process.env.MP_CLIENT_SECRET     ?? "";
+  const baseUrl      = process.env.NEXT_PUBLIC_SITE_URL ?? "https://cercaya-gamma.vercel.app";
+  const appId        = process.env.MP_APP_ID            ?? "8456203604743632";
+  const clientSecret = process.env.MP_CLIENT_SECRET     ?? "A4mhdsaRxVUQlr6nNclT7GRT16oep8Jb";
 
   if (!code || !userId) {
     return NextResponse.redirect(`${baseUrl}/perfil?mp=error`);
