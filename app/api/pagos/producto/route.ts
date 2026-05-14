@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
     console.log("MP preference created:", {
       id:         result.id,
       init_point: result.init_point,
-      status:     (result as Record<string, unknown>).status,
+      status:     (result as unknown as Record<string, unknown>).status,
     });
 
     return NextResponse.json({
