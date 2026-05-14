@@ -70,8 +70,7 @@ export async function POST(req: NextRequest) {
           failure: `${baseUrl}/pago/error`,
           pending: `${baseUrl}/pago/pendiente`,
         },
-        auto_return:      "approved",
-        notification_url: `${baseUrl}/api/pagos/webhook`,
+        auto_return: "approved",
       },
     });
 
