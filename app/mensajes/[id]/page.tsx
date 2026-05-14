@@ -460,8 +460,6 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   const otherName = isBuyer ? conv.sellerName    : conv.buyerName;
   const otherInit = isBuyer ? conv.sellerInitials : conv.buyerInitials;
 
-  // DEBUG — borrar después
-  console.log("🔍 messages state:", messages.map(m => ({ id: m.id, type: m.type, text: m.text.slice(0, 30) })));
   const showReviewPrompt = isBuyer && messages.length >= 2;
   // Mostrar botón de cobro si es el vendedor con negocio activo y MP vinculado
   const canCharge = isSeller && user.isBusiness && user.businessPaid && user.mpLinked;
