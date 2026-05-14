@@ -57,6 +57,8 @@ export async function POST(req: NextRequest) {
           unit_price: amount,
           currency_id: "ARS",
         }],
+        marketplace:      "CercaYa",
+        marketplace_fee:  0,
         metadata: {
           tipo:            "pago_producto",
           seller_id:       sellerId,
@@ -72,6 +74,12 @@ export async function POST(req: NextRequest) {
         auto_return:      "approved",
         notification_url: `${baseUrl}/api/pagos/webhook`,
       },
+    });
+
+    console.log("MP preference created:", {
+      id:         result.id,
+      init_point: result.init_point,
+      status:     (result as Record<string, unknown>).status,
     });
 
     return NextResponse.json({
