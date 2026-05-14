@@ -1,10 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { randomBytes, createHash } from "crypto";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
+
+/** Genera un code_verifier aleatorio (RFC 7636) */
+function generateCodeVerifier(): string {
+  return randomBytes(64)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "")
+    .slice(0, 128);
+}
+
+/** SHA-256 del verifier en base64url (RFC 7636 S256) */
+function generateCodeChallenge(verifier: string): string {
+  return createHash("sha256")
+    .update(verifier)
+    .digest("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "");
+}
 
 // DELETE /api/mp/connect?userId=xxx  →  desvincula la cuenta MP
 export async function DELETE(req: NextRequest) {
@@ -27,9 +48,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Missing userId" }, { status: 400 });
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://cercaya-gamma.vercel.app";
-  const appId   = process.env.MP_APP_ID           ?? "8456203604743632";
+  const baseUrl     = process.env.NEXT_PUBLIC_SITE_URL ?? "https://cercaya-gamma.vercel.app";
+  const appId       = process.env.MP_APP_ID            ?? "8456203604743632";
   const redirectUri = `${baseUrl}/api/mp/callback`;
+
+  const codeVerifier  = generateCodeVerifier();
+  const codeChallenge = generateCodeChallenge(codeVerifier);
 
   const authUrl =
     `https://auth.mercadopago.com/authorization` +
@@ -37,7 +61,20 @@ export async function GET(req: NextRequest) {
     `&response_type=code` +
     `&platform_id=mp` +
     `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-    `&state=${userId}`;
+    `&state=${userId}` +
+    `&code_challenge=${codeChallenge}` +
+    `&code_challenge_method=S256`;
 
-  return NextResponse.redirect(authUrl);
+  const response = NextResponse.redirect(authUrl);
+
+  // Guardamos el verifier en cookie httpOnly para usarlo en el callback
+  response.cookies.set("mp_code_verifier", codeVerifier, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    maxAge: 600, // 10 minutos
+    path: "/",
+  });
+
+  return response;
 }

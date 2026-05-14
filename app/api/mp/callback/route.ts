@@ -12,18 +12,41 @@ export async function GET(req: NextRequest) {
   const userId = searchParams.get("state"); // pasamos userId como state en la URL de autorización
   const baseUrl      = process.env.NEXT_PUBLIC_SITE_URL ?? "https://cercaya-gamma.vercel.app";
   const appId        = process.env.MP_APP_ID            ?? "8456203604743632";
-  const clientSecret = process.env.MP_CLIENT_SECRET     ?? "A4mhdsaRxVUQlr6nNclT7GRT16oep8Jb";
+  const clientSecret = process.env.MP_CLIENT_SECRET;
 
   if (!code || !userId) {
     return NextResponse.redirect(`${baseUrl}/perfil?mp=error`);
   }
 
+  // Leer el code_verifier guardado en la cookie por /api/mp/connect
+  const codeVerifier = req.cookies.get("mp_code_verifier")?.value;
+  console.log("MP callback — code_verifier present:", !!codeVerifier);
+
+  const redirect = (path: string) => {
+    const res = NextResponse.redirect(`${baseUrl}${path}`);
+    res.cookies.delete("mp_code_verifier");
+    return res;
+  };
+
   try {
     const params = new URLSearchParams({
+      grant_type:   "authorization_code",
+      client_id:    appId,
+      code,
+      redirect_uri: `${baseUrl}/api/mp/callback`,
+    });
+
+    // Incluir client_secret solo si está disponible
+    if (clientSecret) params.set("client_secret", clientSecret);
+
+    // PKCE: incluir code_verifier si existe (puede reemplazar o complementar client_secret)
+    if (codeVerifier) params.set("code_verifier", codeVerifier);
+
+    console.log("MP token exchange params:", {
       grant_type:    "authorization_code",
       client_id:     appId,
-      client_secret: clientSecret,
-      code,
+      has_secret:    !!clientSecret,
+      has_verifier:  !!codeVerifier,
       redirect_uri:  `${baseUrl}/api/mp/callback`,
     });
 
@@ -36,12 +59,14 @@ export async function GET(req: NextRequest) {
       body: params.toString(),
     });
 
+    const responseText = await res.text();
+
     if (!res.ok) {
-      console.error("MP OAuth token error:", await res.text());
-      return NextResponse.redirect(`${baseUrl}/perfil?mp=error`);
+      console.error("MP OAuth token error:", responseText);
+      return redirect("/perfil?mp=error");
     }
 
-    const data = await res.json() as {
+    const data = JSON.parse(responseText) as {
       access_token:  string;
       refresh_token: string;
       user_id:       number;
@@ -56,9 +81,9 @@ export async function GET(req: NextRequest) {
       })
       .eq("id", userId);
 
-    return NextResponse.redirect(`${baseUrl}/perfil?mp=ok`);
+    return redirect("/perfil?mp=ok");
   } catch (err) {
     console.error("MP callback error:", err);
-    return NextResponse.redirect(`${baseUrl}/perfil?mp=error`);
+    return redirect("/perfil?mp=error");
   }
 }
