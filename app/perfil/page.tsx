@@ -463,6 +463,20 @@ export default function PerfilPage() {
     })();
   }, [router]);
 
+  // Feedback de vinculación MP (viene de /api/mp/callback)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const mp = params.get("mp");
+    if (mp === "ok") {
+      toast("Mercado Pago vinculado exitosamente ✓");
+      window.history.replaceState({}, "", "/perfil");
+    } else if (mp === "error") {
+      toast("Error al vincular Mercado Pago. Intentá de nuevo.", "error");
+      window.history.replaceState({}, "", "/perfil");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Avatar upload ──────────────────────────────────────────
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -986,6 +1000,63 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
             >
               Cancelar
             </button>
+          </div>
+
+          {/* ── Mercado Pago ── */}
+          <div style={{ padding: "12px 14px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                  background: user.mpLinked ? "var(--green-subtle)" : "var(--border)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 16,
+                }}>
+                  💳
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
+                    Mercado Pago
+                    {user.mpLinked && (
+                      <span style={{ marginLeft: 7, fontSize: 10, fontWeight: 700, color: "var(--green)", background: "var(--green-subtle)", padding: "2px 7px", borderRadius: 4 }}>
+                        ✓ Vinculado
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>
+                    {user.mpLinked
+                      ? "Podés cobrar con tarjeta desde el chat"
+                      : "Vinculá tu cuenta para cobrar desde el chat"}
+                  </div>
+                </div>
+              </div>
+
+              {user.mpLinked ? (
+                <button
+                  onClick={async () => {
+                    if (!confirm("¿Desvincular tu cuenta de Mercado Pago? No podrás generar cobros hasta volver a vincularla.")) return;
+                    await fetch(`/api/mp/connect?userId=${user.id}`, { method: "DELETE" });
+                    onSaved();
+                  }}
+                  style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "1px solid var(--border)", borderRadius: 5, padding: "4px 10px", cursor: "pointer", whiteSpace: "nowrap" as const }}
+                >
+                  Desvincular
+                </button>
+              ) : (
+                <a
+                  href={`/api/mp/connect?userId=${user.id}`}
+                  style={{
+                    fontSize: 12, fontWeight: 600, color: "#fff",
+                    background: "#009ee3", border: "none",
+                    borderRadius: 6, padding: "6px 14px",
+                    textDecoration: "none", whiteSpace: "nowrap" as const,
+                    display: "inline-block",
+                  }}
+                >
+                  Conectar
+                </a>
+              )}
+            </div>
           </div>
 
           {/* ── Imagen de portada ── */}

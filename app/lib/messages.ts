@@ -17,12 +17,22 @@ export interface Conversation {
   createdAt: string;
 }
 
+export type MessageType = "text" | "payment_link" | "payment_confirmed";
+
 export interface Message {
   id: number;
   conversationId: number;
   senderId: string;
   senderInitials: string;
   text: string;
+  type: MessageType;
+  metadata?: {
+    url?:          string;
+    amount?:       number;
+    productTitle?: string;
+    preferenceId?: string;
+    paymentId?:    string;
+  };
   createdAt: string;
 }
 
@@ -52,6 +62,8 @@ function rowToMsg(r: Record<string, unknown>): Message {
     senderId:        r.sender_id as string,
     senderInitials:  r.sender_initials as string,
     text:            r.text as string,
+    type:            (r.type as MessageType) ?? "text",
+    metadata:        (r.metadata as Message["metadata"]) ?? undefined,
     createdAt:       r.created_at as string,
   };
 }
@@ -135,10 +147,19 @@ export async function sendMessage(
   senderId: string,
   senderInitials: string,
   text: string,
+  type: MessageType = "text",
+  metadata?: Message["metadata"],
 ): Promise<Message> {
   const { data: msg, error } = await supabase
     .from("messages")
-    .insert({ conversation_id: conversationId, sender_id: senderId, sender_initials: senderInitials, text: text.trim() })
+    .insert({
+      conversation_id: conversationId,
+      sender_id:       senderId,
+      sender_initials: senderInitials,
+      text:            text.trim(),
+      type,
+      metadata:        metadata ?? null,
+    })
     .select()
     .single();
 

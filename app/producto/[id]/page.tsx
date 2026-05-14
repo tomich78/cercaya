@@ -64,6 +64,8 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
             businessCuit:         profileData.business_cuit as string | undefined,
             businessCuitVerified: (profileData.business_cuit_verified as boolean) ?? false,
             businessSlug:         profileData.business_slug as string | undefined,
+            mpLinked:             !!(profileData.mp_access_token as string | null),
+            mpUserId:             profileData.mp_user_id as number | undefined,
             createdAt:            profileData.created_at as string,
           });
         }

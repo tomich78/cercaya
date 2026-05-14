@@ -28,6 +28,9 @@ export interface LocalUser {
   businessCuitVerified: boolean;  // checksum válido
   businessSlug?: string;          // URL pública: /negocio/[slug]
   businessCoverUrl?: string;      // imagen de portada de la página del negocio
+  // Mercado Pago
+  mpLinked: boolean;              // tiene cuenta MP vinculada
+  mpUserId?: number;
   createdAt: string;
 }
 
@@ -107,6 +110,8 @@ function rowToUser(profile: Record<string, unknown>, email: string): LocalUser {
     businessCuitVerified: (profile.business_cuit_verified as boolean) ?? false,
     businessSlug:         profile.business_slug as string | undefined,
     businessCoverUrl:     profile.business_cover_url as string | undefined,
+    mpLinked:             !!(profile.mp_access_token as string | null),
+    mpUserId:             profile.mp_user_id as number | undefined,
     createdAt:            profile.created_at as string,
   };
 }
