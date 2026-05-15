@@ -11,6 +11,7 @@ import { useToast } from "../components/ToastProvider";
 import { usePageTitle } from "../lib/usePageTitle";
 import BotonPago from "../components/BotonPago";
 import { PRECIOS } from "../lib/pagos";
+import { supabase } from "../lib/supabase";
 import ArgentinaAddressInput from "../components/ArgentinaAddressInput";
 
 // ─── Phone verification ───────────────────────────────────────────────────────
