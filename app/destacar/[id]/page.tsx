@@ -6,7 +6,7 @@ import Navbar from "../../components/Navbar";
 import BotonPago from "../../components/BotonPago";
 import { getCurrentUser } from "../../lib/auth";
 import { getProductById } from "../../lib/storage";
-import { PRECIOS } from "../../api/pagos/preferencia/route";
+import { PRECIOS } from "../../lib/pagos";
 
 export default function DestacarPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);

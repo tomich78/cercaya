@@ -106,10 +106,10 @@ export default function MensajesPage() {
                       borderBottom: isLast ? "none" : "1px solid var(--border)",
                       cursor: "pointer",
                       transition: "background 0.1s",
-                      background: unread ? "#fafffe" : "transparent",
+                      background: unread ? "var(--green-subtle)" : "transparent",
                     }}
                     onMouseEnter={e => (e.currentTarget.style.background = "var(--bg)")}
-                    onMouseLeave={e => (e.currentTarget.style.background = unread ? "#fafffe" : "transparent")}
+                    onMouseLeave={e => (e.currentTarget.style.background = unread ? "var(--green-subtle)" : "transparent")}
                   >
                     {/* Product emoji */}
                     <div style={{ position: "relative", flexShrink: 0 }}>

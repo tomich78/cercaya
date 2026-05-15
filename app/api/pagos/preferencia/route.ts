@@ -1,28 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MercadoPagoConfig, Preference } from "mercadopago";
+import { getAuthUser, unauthorized } from "../../_auth";
+import { PRECIOS, LABELS, type TipoPago } from "../../../lib/pagos";
 
 const client = new MercadoPagoConfig({
   accessToken: process.env.MP_ACCESS_TOKEN!,
 });
 
-// Precios en ARS
-export const PRECIOS = {
-  destacar_7:   2500,   // destacar publicación 7 días
-  destacar_30:  7500,   // destacar publicación 30 días
-  negocio_mes:  5000,   // modo negocio mensual
-  banner_7:     8000,   // banner 7 días
-};
-
-export type TipoPago = keyof typeof PRECIOS;
-
-const LABELS: Record<TipoPago, string> = {
-  destacar_7:   "Publicación destacada — 7 días",
-  destacar_30:  "Publicación destacada — 30 días",
-  negocio_mes:  "Modo Negocio — 1 mes",
-  banner_7:     "Banner publicitario — 7 días",
-};
-
 export async function POST(req: NextRequest) {
+  // Verificar que el usuario esté autenticado
+  const authUser = await getAuthUser(req);
+  if (!authUser) return unauthorized();
+
   try {
     const body = await req.json();
     const { tipo, userId, productId } = body as {
@@ -33,6 +22,11 @@ export async function POST(req: NextRequest) {
 
     if (!tipo || !userId || !(tipo in PRECIOS)) {
       return NextResponse.json({ error: "Parámetros inválidos" }, { status: 400 });
+    }
+
+    // Solo puede crear preferencias para sí mismo
+    if (authUser.id !== userId) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://cercaya-gamma.vercel.app";

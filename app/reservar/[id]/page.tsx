@@ -1,5 +1,5 @@
 "use client";
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "../../components/Navbar";
@@ -8,12 +8,13 @@ import { getProductById, type LocalProduct } from "../../lib/storage";
 import { getOrCreateConversation } from "../../lib/messages";
 import { supabase } from "../../lib/supabase";
 
-type PayMethod  = "efectivo" | "transferencia";
+type PayMethod  = "efectivo" | "transferencia" | "mercadopago";
 type ShipMethod = "retiro" | "delivery" | "cadete";
 
 const PAY_LABELS: Record<PayMethod, string> = {
   efectivo:      "Efectivo",
   transferencia: "Transferencia bancaria",
+  mercadopago:   "Mercado Pago",
 };
 
 const SHIP_LABELS: Record<ShipMethod, string> = {
@@ -56,6 +57,179 @@ function buildMessage(
   lines.push("¿Podemos coordinar los detalles?");
 
   return lines.join("\n");
+}
+
+// ── Provincias de Argentina ───────────────────────────────────
+
+const PROVINCIAS = [
+  { id: "02", nombre: "Ciudad Autónoma de Buenos Aires" },
+  { id: "06", nombre: "Buenos Aires" },
+  { id: "10", nombre: "Catamarca" },
+  { id: "14", nombre: "Córdoba" },
+  { id: "18", nombre: "Corrientes" },
+  { id: "22", nombre: "Chaco" },
+  { id: "26", nombre: "Chubut" },
+  { id: "30", nombre: "Entre Ríos" },
+  { id: "34", nombre: "Formosa" },
+  { id: "38", nombre: "Jujuy" },
+  { id: "42", nombre: "La Pampa" },
+  { id: "46", nombre: "La Rioja" },
+  { id: "50", nombre: "Mendoza" },
+  { id: "54", nombre: "Misiones" },
+  { id: "58", nombre: "Neuquén" },
+  { id: "62", nombre: "Río Negro" },
+  { id: "66", nombre: "Salta" },
+  { id: "70", nombre: "San Juan" },
+  { id: "74", nombre: "San Luis" },
+  { id: "78", nombre: "Santa Cruz" },
+  { id: "82", nombre: "Santa Fe" },
+  { id: "86", nombre: "Santiago del Estero" },
+  { id: "90", nombre: "Tucumán" },
+  { id: "94", nombre: "Tierra del Fuego" },
+];
+
+// ── Input de dirección estructurado ───────────────────────────
+// Provincia (local) → Ciudad (Georef localidades) → Calle y número (libre)
+
+type Localidad = { id: string; nombre: string };
+
+const inputStyle = (hasError = false): React.CSSProperties => ({
+  width: "100%", padding: "9px 11px",
+  border: `1px solid ${hasError ? "#dc2626" : "var(--border)"}`,
+  borderRadius: 7, fontSize: 13,
+  color: "var(--text)", background: "var(--bg)",
+  outline: "none", fontFamily: "inherit",
+  boxSizing: "border-box", transition: "border-color 0.12s",
+});
+
+function AddressInput({
+  onChange, error, onClearError,
+}: {
+  onChange:     (v: string) => void;
+  error:        string;
+  onClearError: () => void;
+}) {
+  const [provId,    setProvId]    = useState("");
+  const [cityInput, setCityInput] = useState("");
+  const [street,    setStreet]    = useState("");
+  const [locs,      setLocs]      = useState<Localidad[]>([]);
+  const [dropOpen,  setDropOpen]  = useState(false);
+  const [fetching,  setFetching]  = useState(false);
+  const cityWrapRef = useRef<HTMLDivElement>(null);
+
+  const provName = PROVINCIAS.find(p => p.id === provId)?.nombre ?? "";
+
+  // Componer dirección completa y notificar al padre
+  useEffect(() => {
+    const parts = [street.trim(), cityInput.trim(), provName].filter(Boolean);
+    onChange(parts.length >= 2 ? parts.join(", ") : "");
+  }, [street, cityInput, provName, onChange]);
+
+  // Buscar localidades via Georef
+  useEffect(() => {
+    if (cityInput.length < 2) { setLocs([]); setDropOpen(false); return; }
+    const t = setTimeout(async () => {
+      setFetching(true);
+      try {
+        const qs = `nombre=${encodeURIComponent(cityInput)}&max=8${provId ? `&provincia=${provId}` : ""}`;
+        const r  = await fetch(`https://apis.datos.gob.ar/georef/api/localidades?${qs}`);
+        const d  = await r.json() as { localidades?: Localidad[] };
+        const list = d.localidades ?? [];
+        setLocs(list);
+        setDropOpen(list.length > 0);
+      } catch { setLocs([]); }
+      setFetching(false);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [cityInput, provId]);
+
+  // Cerrar dropdown al click afuera
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      if (cityWrapRef.current && !cityWrapRef.current.contains(e.target as Node))
+        setDropOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column" as const, gap: 8 }}>
+
+      {/* Paso 1: Provincia */}
+      <select
+        value={provId}
+        onChange={e => { setProvId(e.target.value); setCityInput(""); setLocs([]); onClearError(); }}
+        style={{ ...inputStyle(!!error && !provId), cursor: "pointer", appearance: "auto" as const }}
+      >
+        <option value="">Provincia…</option>
+        {PROVINCIAS.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+      </select>
+
+      {/* Paso 2: Ciudad / localidad */}
+      <div ref={cityWrapRef} style={{ position: "relative" }}>
+        <div style={{ position: "relative" }}>
+          <input
+            value={cityInput}
+            onChange={e => { setCityInput(e.target.value); setDropOpen(false); onClearError(); }}
+            onFocus={() => { if (locs.length > 0) setDropOpen(true); }}
+            placeholder={provId ? "Ciudad o localidad…" : "Primero elegí una provincia"}
+            disabled={!provId}
+            autoComplete="off"
+            style={{
+              ...inputStyle(!!error && !!provId && !cityInput),
+              paddingRight: fetching ? 30 : 11,
+              opacity: provId ? 1 : 0.5,
+              borderRadius: dropOpen && locs.length > 0 ? "7px 7px 0 0" : 7,
+            }}
+          />
+          {fetching && (
+            <div style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: "var(--text-3)", pointerEvents: "none" }}>⟳</div>
+          )}
+        </div>
+
+        {dropOpen && locs.length > 0 && (
+          <div style={{
+            position: "absolute", left: 0, right: 0, zIndex: 50,
+            background: "var(--surface)",
+            border: "1px solid var(--border)", borderTop: "none",
+            borderRadius: "0 0 7px 7px",
+            maxHeight: 200, overflowY: "auto",
+            boxShadow: "0 6px 16px rgba(0,0,0,0.10)",
+          }}>
+            {locs.map((loc, i) => (
+              <button
+                key={loc.id}
+                type="button"
+                onMouseDown={e => { e.preventDefault(); setCityInput(loc.nombre); setDropOpen(false); onClearError(); }}
+                style={{
+                  display: "block", width: "100%", textAlign: "left",
+                  padding: "8px 12px", background: "none", border: "none",
+                  borderTop: i > 0 ? "1px solid var(--border)" : "none",
+                  fontSize: 12, color: "var(--text)", cursor: "pointer", fontFamily: "inherit",
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = "var(--bg)")}
+                onMouseLeave={e => (e.currentTarget.style.background = "none")}
+              >
+                {loc.nombre}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Paso 3: Calle y número */}
+      <input
+        value={street}
+        onChange={e => { setStreet(e.target.value); onClearError(); }}
+        placeholder={cityInput ? "Calle y número, piso/depto (opcional)" : "Primero elegí tu ciudad"}
+        disabled={!cityInput}
+        style={{ ...inputStyle(!!error && !!cityInput && !street), opacity: cityInput ? 1 : 0.5 }}
+      />
+
+      {error && <div style={{ fontSize: 12, color: "#dc2626" }}>{error}</div>}
+    </div>
+  );
 }
 
 // Selector de opción con ícono
@@ -111,6 +285,11 @@ export default function ReservarPage({ params }: { params: Promise<{ id: string 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]     = useState("");
 
+  // Info del vendedor cargada al inicio
+  const [sellerName,      setSellerName]      = useState("Vendedor");
+  const [sellerInitials,  setSellerInitials]  = useState("VV");
+  const [sellerMpEnabled, setSellerMpEnabled] = useState(false); // negocio activo + MP vinculado
+
   const [payMethod,  setPayMethod]  = useState<PayMethod>("transferencia");
   const [shipMethod, setShipMethod] = useState<ShipMethod>("retiro");
   const [address, setAddress]       = useState("");
@@ -133,8 +312,20 @@ export default function ReservarPage({ params }: { params: Promise<{ id: string 
       setUser(u);
       setProduct(p);
 
-      // Pre-rellenar dirección si el usuario tiene ubicación guardada
-      if (u.location) setAddress(u.location);
+      // Cargar perfil del vendedor para nombre y verificar si tiene MP activo
+      const { data: sp } = await supabase
+        .from("profiles")
+        .select("name, initials, is_business, business_name, business_paid, mp_access_token")
+        .eq("id", p.userId)
+        .single();
+
+      if (sp) {
+        const isBiz  = (sp.is_business as boolean) && (sp.business_paid as boolean);
+        const name   = (isBiz && sp.business_name) ? (sp.business_name as string) : ((sp.name as string) ?? "Vendedor");
+        setSellerName(name);
+        setSellerInitials((sp.initials as string) ?? "VV");
+        setSellerMpEnabled(isBiz && !!(sp.mp_access_token as string | null));
+      }
 
       setLoading(false);
     })();
@@ -152,19 +343,6 @@ export default function ReservarPage({ params }: { params: Promise<{ id: string 
     setError("");
 
     try {
-      // Obtener info del vendedor desde profiles
-      const { data: sellerProfile } = await supabase
-        .from("profiles")
-        .select("name, initials, is_business, business_name")
-        .eq("id", product.userId)
-        .single();
-
-      const isBusiness = (sellerProfile?.is_business as boolean | null) ?? false;
-      const businessName = (sellerProfile?.business_name as string | null) ?? null;
-      // Usar nombre de negocio si está activo
-      const sellerName     = (isBusiness && businessName) ? businessName : ((sellerProfile?.name as string | null) ?? "Vendedor");
-      const sellerInitials = (sellerProfile?.initials as string | null) ?? "VV";
-
       const conv = await getOrCreateConversation({
         productId:       product.id,
         productTitle:    product.title,
@@ -212,7 +390,7 @@ export default function ReservarPage({ params }: { params: Promise<{ id: string 
           Elegí cómo querés pagar y recibir el producto. Se va a generar un mensaje para coordinar con el vendedor.
         </p>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+        <div className="reservar-grid">
 
           {/* ── Columna izquierda: formulario ── */}
           <div style={{ display: "flex", flexDirection: "column", gap: 20, gridColumn: "1 / 2" }}>
@@ -244,6 +422,15 @@ export default function ReservarPage({ params }: { params: Promise<{ id: string 
                 ¿Cómo querés pagar?
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {sellerMpEnabled && (
+                  <OptionBtn
+                    selected={payMethod === "mercadopago"}
+                    onClick={() => setPayMethod("mercadopago")}
+                    icon="💳"
+                    label="Mercado Pago"
+                    sub="El vendedor te envía un link de pago seguro"
+                  />
+                )}
                 <OptionBtn
                   selected={payMethod === "transferencia"}
                   onClick={() => setPayMethod("transferencia")}
@@ -297,28 +484,16 @@ export default function ReservarPage({ params }: { params: Promise<{ id: string 
                 <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6, color: "var(--text)" }}>
                   Dirección de entrega
                 </label>
-                <input
-                  value={address}
-                  onChange={e => { setAddress(e.target.value); setAddrError(""); }}
-                  placeholder="Ej: Av. Belgrano 1234, piso 3, CABA"
-                  style={{
-                    width: "100%", padding: "9px 11px",
-                    border: `1px solid ${addrError ? "#dc2626" : "var(--border)"}`,
-                    borderRadius: 7, fontSize: 13,
-                    color: "var(--text)", background: "var(--bg)",
-                    outline: "none", fontFamily: "inherit",
-                    boxSizing: "border-box",
-                  }}
+                <AddressInput
+                  onChange={setAddress}
+                  error={addrError}
+                  onClearError={() => setAddrError("")}
                 />
-                {addrError && <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4 }}>{addrError}</div>}
-                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 5 }}>
-                  Ingresá la dirección completa donde querés recibir el producto.
-                </div>
               </div>
             )}
 
             {error && (
-              <div style={{ fontSize: 13, color: "#dc2626", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 7, padding: "10px 12px" }}>
+              <div style={{ fontSize: 13, color: "var(--red)", background: "var(--red-subtle)", border: "1px solid var(--red-border)", borderRadius: 7, padding: "10px 12px" }}>
                 {error}
               </div>
             )}

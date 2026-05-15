@@ -32,6 +32,7 @@ export interface Message {
     productTitle?: string;
     preferenceId?: string;
     paymentId?:    string;
+    disabled?:     boolean;
   };
   createdAt: string;
 }

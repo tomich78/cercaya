@@ -122,6 +122,8 @@ export default function EditarPage({ params }: { params: Promise<{ id: string }>
   const [locationLat, setLocationLat] = useState<number | null>(null);
   const [locationLng, setLocationLng] = useState<number | null>(null);
 
+  const [stock, setStock] = useState(1);
+
   const [form, setForm] = useState({
     title: "", priceRaw: "", category: "Electrónica",
     emoji: "💻", description: "", location: "",
@@ -156,6 +158,7 @@ export default function EditarPage({ params }: { params: Promise<{ id: string }>
       setLocationLat(p.lat ?? null);
       setLocationLng(p.lng ?? null);
       setExistingImages(p.images ?? []);
+      setStock(p.stock ?? 1);
       setLoading(false);
     })();
   }, [id, router]);
@@ -240,6 +243,7 @@ export default function EditarPage({ params }: { params: Promise<{ id: string }>
         images:      allImages,
         lat:         locationLat,
         lng:         locationLng,
+        stock:       stock,
       });
 
       toast("¡Publicación actualizada!");
@@ -414,7 +418,7 @@ export default function EditarPage({ params }: { params: Promise<{ id: string }>
                   </div>
                 )}
               </Field>
-              <div style={{ marginBottom: 2 }}>
+              <div style={{ marginBottom: 14 }}>
                 <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 7 }}>
                   Condición
                 </label>
@@ -434,6 +438,54 @@ export default function EditarPage({ params }: { params: Promise<{ id: string }>
                       }}
                     >{c}</button>
                   ))}
+                </div>
+              </div>
+
+              {/* Stock */}
+              <div>
+                <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 7 }}>
+                  Stock disponible
+                </label>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <button
+                    type="button"
+                    onClick={() => setStock(s => Math.max(1, s - 1))}
+                    style={{
+                      width: 32, height: 32, borderRadius: 6, border: "1px solid var(--border)",
+                      background: "var(--surface)", color: "var(--text)", fontSize: 18,
+                      cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                      lineHeight: 1, padding: 0, flexShrink: 0,
+                    }}
+                  >−</button>
+                  <input
+                    type="number"
+                    min={1}
+                    max={999}
+                    value={stock}
+                    onChange={e => {
+                      const v = Number(e.target.value);
+                      if (!isNaN(v) && v >= 1 && v <= 999) setStock(v);
+                    }}
+                    style={{
+                      width: 64, textAlign: "center",
+                      padding: "6px 8px", border: "1px solid var(--border)",
+                      borderRadius: 6, fontSize: 13,
+                      color: "var(--text)", background: "var(--bg)", outline: "none",
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setStock(s => Math.min(999, s + 1))}
+                    style={{
+                      width: 32, height: 32, borderRadius: 6, border: "1px solid var(--border)",
+                      background: "var(--surface)", color: "var(--text)", fontSize: 18,
+                      cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                      lineHeight: 1, padding: 0, flexShrink: 0,
+                    }}
+                  >+</button>
+                  <span style={{ fontSize: 12, color: "var(--text-3)" }}>
+                    {stock === 1 ? "1 unidad" : `${stock} unidades`}
+                  </span>
                 </div>
               </div>
             </Section>

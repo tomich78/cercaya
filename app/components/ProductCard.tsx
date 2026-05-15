@@ -127,12 +127,12 @@ export default function ProductCard({ product }: { product: Product }) {
               top: 8, right: 8,
               width: 28, height: 28,
               borderRadius: "50%",
-              background: "rgba(255,255,255,0.88)",
-              border: "none",
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
               cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center",
               padding: 0,
-              boxShadow: "0 1px 4px rgba(0,0,0,0.10)",
+              boxShadow: "0 1px 4px rgba(0,0,0,0.18)",
               transition: "transform 0.1s",
             }}
             onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.12)")}
@@ -181,7 +181,7 @@ export default function ProductCard({ product }: { product: Product }) {
                     style={{
                       fontSize: 10, fontWeight: 700, letterSpacing: 0.3,
                       textTransform: "uppercase" as const, padding: "2px 7px", borderRadius: 3,
-                      background: product.sellerCuitVerified ? "var(--green)" : "#1d4ed8",
+                      background: product.sellerCuitVerified ? "var(--green)" : "var(--blue)",
                       color: "#fff", textDecoration: "none",
                     }}
                   >
@@ -191,7 +191,7 @@ export default function ProductCard({ product }: { product: Product }) {
                   <span style={{
                     fontSize: 10, fontWeight: 700, letterSpacing: 0.3,
                     textTransform: "uppercase" as const, padding: "2px 7px", borderRadius: 3,
-                    background: product.sellerCuitVerified ? "var(--green)" : "#1d4ed8",
+                    background: product.sellerCuitVerified ? "var(--green)" : "var(--blue)",
                     color: "#fff",
                   }}>
                     {product.sellerCuitVerified ? "✓ Negocio" : "🏪 Negocio"}

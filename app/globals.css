@@ -2,43 +2,76 @@
 
 /* ── Modo claro (default) ───────────────────────────────────── */
 :root {
-  --bg:           #f5f5f3;
-  --surface:      #ffffff;
-  --border:       #e8e8e6;
-  --text:         #111111;
-  --text-2:       #666666;
-  --text-3:       #9b9b9b;
-  --green:        #0F6E56;
-  --green-subtle: #eef7f3;
-  --amber:        #b45309;
+  --bg:             #f5f5f3;
+  --surface:        #ffffff;
+  --border:         #e8e8e6;
+  --text:           #111111;
+  --text-2:         #666666;
+  --text-3:         #9b9b9b;
+  --green:          #0F6E56;
+  --green-subtle:   #eef7f3;
+  --green-bg:       #f0fdf4;
+  --green-border:   #bbf7d0;
+  --amber:          #b45309;
+  /* Rojo — errores y badges de notificación */
+  --red:            #ef4444;
+  --red-subtle:     #fef2f2;
+  --red-border:     #fecaca;
+  /* Amarillo — advertencias */
+  --yellow-subtle:  #fef3c7;
+  --yellow-border:  #fde68a;
+  --yellow-text:    #92400e;
+  /* Azul — badge "Negocio" sin CUIT verificado */
+  --blue:           #1d4ed8;
+  --blue-subtle:    #dbeafe;
 }
 
 /* ── Modo oscuro — sistema (cuando no hay override manual) ──── */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg:           #111110;
-    --surface:      #1c1c1a;
-    --border:       #2d2d2b;
-    --text:         #efefed;
-    --text-2:       #a0a09e;
-    --text-3:       #636361;
-    --green:        #1aab82;
-    --green-subtle: #0d2922;
-    --amber:        #d97706;
+    --bg:             #111110;
+    --surface:        #1c1c1a;
+    --border:         #2d2d2b;
+    --text:           #efefed;
+    --text-2:         #a0a09e;
+    --text-3:         #636361;
+    --green:          #1aab82;
+    --green-subtle:   #0d2922;
+    --green-bg:       #0d2922;
+    --green-border:   #14532d;
+    --amber:          #d97706;
+    --red:            #f87171;
+    --red-subtle:     #2d1515;
+    --red-border:     #7f1d1d;
+    --yellow-subtle:  #1c1400;
+    --yellow-border:  #44330a;
+    --yellow-text:    #d97706;
+    --blue:           #60a5fa;
+    --blue-subtle:    #172554;
   }
 }
 
 /* ── Modo oscuro — override manual ─────────────────────────── */
 [data-theme="dark"] {
-  --bg:           #111110;
-  --surface:      #1c1c1a;
-  --border:       #2d2d2b;
-  --text:         #efefed;
-  --text-2:       #a0a09e;
-  --text-3:       #636361;
-  --green:        #1aab82;
-  --green-subtle: #0d2922;
-  --amber:        #d97706;
+  --bg:             #111110;
+  --surface:        #1c1c1a;
+  --border:         #2d2d2b;
+  --text:           #efefed;
+  --text-2:         #a0a09e;
+  --text-3:         #636361;
+  --green:          #1aab82;
+  --green-subtle:   #0d2922;
+  --green-bg:       #0d2922;
+  --green-border:   #14532d;
+  --amber:          #d97706;
+  --red:            #f87171;
+  --red-subtle:     #2d1515;
+  --red-border:     #7f1d1d;
+  --yellow-subtle:  #1c1400;
+  --yellow-border:  #44330a;
+  --yellow-text:    #d97706;
+  --blue:           #60a5fa;
+  --blue-subtle:    #172554;
 }
 
 * { box-sizing: border-box; }
@@ -53,7 +86,37 @@ body {
 
 a { text-decoration: none; color: inherit; }
 
+/* ── Bottom nav mobile (oculta por defecto, CSS la muestra) ─── */
+.mobile-bottom-nav {
+  display: none;
+}
+
 /* ── Layout responsivo ──────────────────────────────────────── */
+
+/* Grilla de productos — 2 col en mobile, auto-fill en desktop */
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+@media (min-width: 480px) {
+  .product-grid {
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 12px;
+  }
+}
+
+/* Grilla 2 columnas del formulario de reserva — apila en mobile */
+.reservar-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+@media (min-width: 700px) {
+  .reservar-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
 
 /* Grillas de 2 columnas */
 .two-col-product {
@@ -81,6 +144,20 @@ a { text-decoration: none; color: inherit; }
   height: 100dvh;
 }
 
+/* Paneles laterales del chat (chats recientes + producto) */
+.chat-side-panel {
+  width: 190px;
+  flex-shrink: 0;
+  background: var(--surface);
+  overflow-y: auto;
+}
+
+@media (max-width: 860px) {
+  .chat-side-panel {
+    display: none !important;
+  }
+}
+
 /* Scrollbar estética del chat */
 .chat-messages::-webkit-scrollbar        { width: 4px; }
 .chat-messages::-webkit-scrollbar-track  { background: transparent; }
@@ -92,12 +169,12 @@ a { text-decoration: none; color: inherit; }
 
 /* ── Transición de página ───────────────────────────────────── */
 @keyframes page-fade-in {
-  from { opacity: 0; transform: translateY(5px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; translate: 0 5px; }
+  to   { opacity: 1; translate: 0 0; }
 }
 
 .page-transition {
-  animation: page-fade-in 0.2s ease-out both;
+  animation: page-fade-in 0.2s ease-out backwards;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -153,8 +230,8 @@ a { text-decoration: none; color: inherit; }
 }
 
 .toast-success {
-  background: #111;
-  color: #fff;
+  background: var(--text);
+  color: var(--bg);
 }
 .toast-error {
   background: #dc2626;
@@ -169,17 +246,17 @@ a { text-decoration: none; color: inherit; }
 @media (max-width: 768px) {
   /* Bottom nav — mostrar en mobile */
   .mobile-bottom-nav {
-    display: flex !important;
+    display: flex;
   }
 
-  /* Espaciado inferior para que el contenido no quede detrás del bottom nav */
+  /* Espaciado inferior para que el footer no quede detrás del bottom nav */
   body {
-    padding-bottom: 60px;
+    padding-bottom: 80px;
   }
 
   /* Toast sube sobre el bottom nav */
   .toast-stack {
-    bottom: 72px;
+    bottom: 80px;
     width: calc(100% - 2rem);
   }
   .toast {

@@ -99,7 +99,7 @@ export default function Navbar() {
             Mensajes
             {unread > 0 && (
               <span style={{
-                background: "#ef4444", color: "#fff",
+                background: "var(--red)", color: "#fff",
                 borderRadius: "50%",
                 width: 16, height: 16,
                 fontSize: 10, fontWeight: 700,
@@ -189,7 +189,7 @@ export default function Navbar() {
                 borderRadius: 8,
                 padding: "6px 0",
                 minWidth: 180,
-                boxShadow: "0 4px 16px rgba(0,0,0,0.07)",
+                boxShadow: "0 4px 16px rgba(0,0,0,0.14)",
                 zIndex: 200,
               }}>
                 <div style={{
@@ -257,7 +257,7 @@ export default function Navbar() {
                   Mensajes
                   {unread > 0 && (
                     <span style={{
-                      background: "#ef4444", color: "#fff",
+                      background: "var(--red)", color: "#fff",
                       borderRadius: "50%",
                       width: 16, height: 16,
                       fontSize: 10, fontWeight: 700,
@@ -299,7 +299,6 @@ export default function Navbar() {
 
     {/* ── Bottom nav mobile ─────────────────────────────────────── */}
     <nav className="mobile-bottom-nav" style={{
-      display: "none", // CSS lo muestra en mobile
       position: "fixed",
       bottom: 0, left: 0, right: 0,
       height: 60,
@@ -335,7 +334,7 @@ export default function Navbar() {
           {unread > 0 && (
             <span style={{
               position: "absolute", top: -4, right: -6,
-              background: "#ef4444", color: "#fff",
+              background: "var(--red)", color: "#fff",
               borderRadius: "50%",
               width: 15, height: 15,
               fontSize: 9, fontWeight: 700,

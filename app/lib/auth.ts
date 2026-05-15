@@ -28,6 +28,7 @@ export interface LocalUser {
   businessCuitVerified: boolean;  // checksum válido
   businessSlug?: string;          // URL pública: /negocio/[slug]
   businessCoverUrl?: string;      // imagen de portada de la página del negocio
+  businessAddress?: string;       // dirección física del negocio
   // Mercado Pago
   mpLinked: boolean;              // tiene cuenta MP vinculada
   mpUserId?: number;
@@ -110,6 +111,7 @@ function rowToUser(profile: Record<string, unknown>, email: string): LocalUser {
     businessCuitVerified: (profile.business_cuit_verified as boolean) ?? false,
     businessSlug:         profile.business_slug as string | undefined,
     businessCoverUrl:     profile.business_cover_url as string | undefined,
+    businessAddress:      profile.business_address as string | undefined,
     mpLinked:             !!(profile.mp_access_token as string | null),
     mpUserId:             profile.mp_user_id as number | undefined,
     createdAt:            profile.created_at as string,
@@ -226,6 +228,7 @@ export async function updateUser(
     businessCuitVerified: boolean;
     businessSlug: string;
     businessCoverUrl: string;
+    businessAddress: string;
   }>,
 ): Promise<void> {
   const row: Record<string, unknown> = {};
@@ -250,6 +253,7 @@ export async function updateUser(
   if (updates.businessCuitVerified !== undefined) row.business_cuit_verified  = updates.businessCuitVerified;
   if (updates.businessSlug        !== undefined) row.business_slug           = updates.businessSlug;
   if (updates.businessCoverUrl    !== undefined) row.business_cover_url      = updates.businessCoverUrl;
+  if (updates.businessAddress     !== undefined) row.business_address        = updates.businessAddress;
   await supabase.from("profiles").update(row).eq("id", userId);
 }
 

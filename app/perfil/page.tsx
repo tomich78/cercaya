@@ -10,7 +10,8 @@ import { getReviewsForSeller, type Review } from "../lib/reviews";
 import { useToast } from "../components/ToastProvider";
 import { usePageTitle } from "../lib/usePageTitle";
 import BotonPago from "../components/BotonPago";
-import { PRECIOS } from "../api/pagos/preferencia/route";
+import { PRECIOS } from "../lib/pagos";
+import ArgentinaAddressInput from "../components/ArgentinaAddressInput";
 
 // ─── Phone verification ───────────────────────────────────────────────────────
 
@@ -46,12 +47,12 @@ function PhoneVerification({ user, onVerified }: { user: LocalUser; onVerified: 
   return (
     <div style={expandBox}>
       <div style={expandTitle}>Ingresá el código</div>
-      <div style={{ background: "#fefce8", border: "1px solid #fde68a", borderRadius: 6, padding: "8px 12px", fontSize: 12, color: "#92400e", marginBottom: 10 }}>
+      <div style={{ background: "var(--yellow-subtle)", border: "1px solid var(--yellow-border)", borderRadius: 6, padding: "8px 12px", fontSize: 12, color: "var(--yellow-text)", marginBottom: 10 }}>
         Modo desarrollo — tu código es: <strong style={{ letterSpacing: 2 }}>{secret}</strong>
       </div>
       <input value={input} onChange={e => { setInput(e.target.value); setError(""); }} placeholder="Código de 4 dígitos"
         maxLength={4} inputMode="numeric" style={{ ...fieldInput, borderColor: error ? "#dc2626" : "var(--border)" }} />
-      {error && <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4 }}>{error}</div>}
+      {error && <div style={{ fontSize: 12, color: "var(--red)", marginTop: 4 }}>{error}</div>}
       <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
         <button onClick={async () => { if (input !== secret) { setError("Código incorrecto."); return; } await updateUser(user.id, { phoneVerified: true, phoneNumber: phone }); onVerified(); }} style={primaryBtn}>
           Confirmar
@@ -89,7 +90,7 @@ function DniVerification({ user, onSubmitted }: { user: LocalUser; onSubmitted: 
     return (
       <div style={{ padding: "14px 0" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#fef3c7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>
+          <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--yellow-subtle)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>
             ⏳
           </div>
           <div>
@@ -99,7 +100,7 @@ function DniVerification({ user, onSubmitted }: { user: LocalUser; onSubmitted: 
             </div>
           </div>
         </div>
-        <div style={{ marginTop: 10, padding: "10px 12px", background: "#fefce8", border: "1px solid #fde68a", borderRadius: 6, fontSize: 12, color: "#92400e", lineHeight: 1.6 }}>
+        <div style={{ marginTop: 10, padding: "10px 12px", background: "var(--yellow-subtle)", border: "1px solid var(--yellow-border)", borderRadius: 6, fontSize: 12, color: "var(--yellow-text)", lineHeight: 1.6 }}>
           Recibimos tu DNI y lo estamos verificando. Te avisaremos cuando esté aprobado. Mientras tanto podés usar la app normalmente.
         </div>
       </div>
@@ -111,11 +112,11 @@ function DniVerification({ user, onSubmitted }: { user: LocalUser; onSubmitted: 
     return (
       <div style={{ padding: "14px 0" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-          <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>
+          <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--red-subtle)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>
             ✕
           </div>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#dc2626" }}>Verificación rechazada</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--red)" }}>Verificación rechazada</div>
             <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>
               La foto no era legible. Podés intentarlo de nuevo.
             </div>
@@ -245,7 +246,7 @@ function DniVerification({ user, onSubmitted }: { user: LocalUser; onSubmitted: 
       </div>
 
       {error && (
-        <div style={{ fontSize: 12, color: "#dc2626", marginBottom: 10, padding: "8px 10px", background: "#fef2f2", borderRadius: 6, border: "1px solid #fecaca" }}>
+        <div style={{ fontSize: 12, color: "var(--red)", marginBottom: 10, padding: "8px 10px", background: "var(--red-subtle)", borderRadius: 6, border: "1px solid var(--red-border)" }}>
           {error}
         </div>
       )}
@@ -411,9 +412,9 @@ function ProfileCompletion({ user, products }: { user: LocalUser; products: Loca
 
 function trustLabel(user: LocalUser) {
   if (user.phoneVerified && user.dniVerified)      return { text: "Verificado completo",   color: "var(--green)", bg: "var(--green-subtle)" };
-  if (user.phoneVerified && user.dniStatus === "pending") return { text: "DNI en revisión", color: "#d97706",      bg: "#fef3c7" };
-  if (user.phoneVerified)                          return { text: "Verificación parcial",   color: "#d97706",      bg: "#fef3c7" };
-  if (user.dniStatus === "pending")                return { text: "DNI en revisión",         color: "#d97706",      bg: "#fef3c7" };
+  if (user.phoneVerified && user.dniStatus === "pending") return { text: "DNI en revisión", color: "var(--amber)",      bg: "#fef3c7" };
+  if (user.phoneVerified)                          return { text: "Verificación parcial",   color: "var(--amber)",      bg: "#fef3c7" };
+  if (user.dniStatus === "pending")                return { text: "DNI en revisión",         color: "var(--amber)",      bg: "#fef3c7" };
   return { text: "Sin verificar", color: "var(--text-3)", bg: "var(--bg)" };
 }
 
@@ -595,7 +596,7 @@ export default function PerfilPage() {
                       onClear={() => { setEditLoc(""); setEditLat(null); setEditLng(null); }}
                     />
                   </div>
-                  {editErr && <div style={{ fontSize: 12, color: "#dc2626" }}>{editErr}</div>}
+                  {editErr && <div style={{ fontSize: 12, color: "var(--red)" }}>{editErr}</div>}
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={saveEdit} disabled={saving} style={{ ...primaryBtn, opacity: saving ? 0.7 : 1, fontSize: 12 }}>
                       {saving ? "Guardando..." : "Guardar"}
@@ -660,7 +661,7 @@ export default function PerfilPage() {
                     </div>
                     <span style={{ fontSize: 13, fontWeight: 600 }}>{r.reviewerName}</span>
                   </div>
-                  <div style={{ color: "#d97706", fontSize: 13, letterSpacing: 1 }}>
+                  <div style={{ color: "var(--amber)", fontSize: 13, letterSpacing: 1 }}>
                     {"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}
                   </div>
                 </div>
@@ -688,7 +689,7 @@ export default function PerfilPage() {
               <Link href="/publicar" style={{ fontSize: 13, color: "var(--green)", fontWeight: 500 }}>Publicar algo →</Link>
             </div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
+            <div className="product-grid">
               {myProducts.map(p => (
                 <ProductMini
                   key={p.id}
@@ -737,8 +738,8 @@ function BusinessStats({ userId }: { userId: string }) {
   const METRICS = stats ? [
     { icon: "👁️", label: "Vistas en productos",  value: stats.totalViews.toLocaleString("es-AR"),    color: "var(--green)" },
     { icon: "🏪", label: "Visitas a tu página",   value: stats.pageViews.toLocaleString("es-AR"),     color: "#7c3aed" },
-    { icon: "💬", label: "Consultas recibidas",   value: stats.totalMessages.toLocaleString("es-AR"), color: "#1d4ed8" },
-    { icon: "📦", label: "Productos vendidos",    value: stats.totalSold.toLocaleString("es-AR"),      color: "#d97706" },
+    { icon: "💬", label: "Consultas recibidas",   value: stats.totalMessages.toLocaleString("es-AR"), color: "var(--blue)" },
+    { icon: "📦", label: "Productos vendidos",    value: stats.totalSold.toLocaleString("es-AR"),      color: "var(--amber)" },
   ] : [];
 
   return (
@@ -854,6 +855,9 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
   const [slugErr, setSlugErr] = useState("");
   const [coverUrl,    setCoverUrl]    = useState(user.businessCoverUrl ?? "");
   const [coverLoading,setCoverLoading]= useState(false);
+  const [showMpInfo,  setShowMpInfo]  = useState(false);
+  const [bAddr,       setBAddr]       = useState(user.businessAddress ?? "");
+  const [addrErr,     setAddrErr]     = useState("");
 
 
   function generateSlug(name: string) {
@@ -893,6 +897,7 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
       businessDesc:         bDesc.trim()  || undefined,
       businessCuit:         cleanCuit     || undefined,
       businessCuitVerified: cleanCuit ? validateCuit(cleanCuit) : false,
+      businessAddress:      bAddr.trim() || undefined,
     });
     setSaving(false);
     setStep("closed");
@@ -903,7 +908,7 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
   const badgeEl = user.businessPaid
     ? user.businessCuitVerified
       ? <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: "var(--green)", background: "var(--green-subtle)", padding: "2px 7px", borderRadius: 4, letterSpacing: 0.3, textTransform: "uppercase" as const }}>✓ Verificado</span>
-      : <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: "#1d4ed8", background: "#dbeafe", padding: "2px 7px", borderRadius: 4, letterSpacing: 0.3, textTransform: "uppercase" as const }}>Activo</span>
+      : <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: "var(--blue)", background: "var(--blue-subtle)", padding: "2px 7px", borderRadius: 4, letterSpacing: 0.3, textTransform: "uppercase" as const }}>Activo</span>
     : null;
 
   return (
@@ -996,15 +1001,16 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
                 await updateUser(user.id, { businessPaid: false, isBusiness: false });
                 onSaved();
               }}
-              style={{ marginLeft: "auto", fontSize: 11, color: "#dc2626", background: "none", border: "1px solid #dc2626", borderRadius: 4, padding: "2px 8px", cursor: "pointer" }}
+              style={{ marginLeft: "auto", fontSize: 11, color: "var(--red)", background: "none", border: "1px solid #dc2626", borderRadius: 4, padding: "2px 8px", cursor: "pointer" }}
             >
               Cancelar
             </button>
           </div>
 
           {/* ── Mercado Pago ── */}
-          <div style={{ padding: "12px 14px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
+            {/* Fila principal */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "12px 14px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{
                   width: 32, height: 32, borderRadius: 8, flexShrink: 0,
@@ -1035,7 +1041,11 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
                 <button
                   onClick={async () => {
                     if (!confirm("¿Desvincular tu cuenta de Mercado Pago? No podrás generar cobros hasta volver a vincularla.")) return;
-                    await fetch(`/api/mp/connect?userId=${user.id}`, { method: "DELETE" });
+                    const { data: { session } } = await supabase.auth.getSession();
+                    await fetch(`/api/mp/connect?userId=${user.id}`, {
+                      method: "DELETE",
+                      headers: { "Authorization": `Bearer ${session?.access_token ?? ""}` },
+                    });
                     onSaved();
                   }}
                   style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "1px solid var(--border)", borderRadius: 5, padding: "4px 10px", cursor: "pointer", whiteSpace: "nowrap" as const }}
@@ -1043,20 +1053,120 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
                   Desvincular
                 </button>
               ) : (
-                <a
-                  href={`/api/mp/connect?userId=${user.id}`}
+                <button
+                  onClick={() => setShowMpInfo(v => !v)}
                   style={{
                     fontSize: 12, fontWeight: 600, color: "#fff",
                     background: "#009ee3", border: "none",
                     borderRadius: 6, padding: "6px 14px",
-                    textDecoration: "none", whiteSpace: "nowrap" as const,
-                    display: "inline-block",
+                    cursor: "pointer", whiteSpace: "nowrap" as const,
                   }}
                 >
                   Conectar
-                </a>
+                </button>
               )}
             </div>
+
+            {/* Panel informativo — se despliega antes de redirigir */}
+            {!user.mpLinked && showMpInfo && (
+              <div style={{ borderTop: "1px solid var(--border)", padding: "14px 16px", background: "#f8fafc" }}>
+                {/* Título */}
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 10 }}>
+                  ¿Por qué pedimos acceso a tu cuenta?
+                </div>
+
+                {/* Permisos explicados */}
+                <div style={{ display: "flex", flexDirection: "column" as const, gap: 7, marginBottom: 12 }}>
+                  {[
+                    {
+                      icon: "🔒",
+                      title: "Leer tu cuenta",
+                      desc: "Solo para confirmar que la vinculación fue exitosa y mostrarte el estado de tu cuenta en EstamosCerca.",
+                    },
+                    {
+                      icon: "💸",
+                      title: "Crear cobros en tu nombre",
+                      desc: "Únicamente cuando vos generás un cobro desde el chat. Nunca se ejecuta ninguna acción sin tu intervención.",
+                    },
+                    {
+                      icon: "🔄",
+                      title: "Acceso sin re-autenticar",
+                      desc: "Para que la conexión se mantenga activa sin que tengas que ingresar tu contraseña cada vez.",
+                    },
+                  ].map(p => (
+                    <div key={p.title} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                      <span style={{ fontSize: 15, lineHeight: 1.4 }}>{p.icon}</span>
+                      <div>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{p.title}:</span>{" "}
+                            <span style={{ fontSize: 12, color: "var(--text-2)" }}>{p.desc}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Lo que NO hacemos */}
+                <div style={{ background: "var(--green-bg)", border: "1px solid var(--green-border)", borderRadius: 6, padding: "9px 12px", marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#166534", marginBottom: 5 }}>
+                    Lo que EstamosCerca NO hace con tu cuenta:
+                  </div>
+                  {[
+                    "Consultar tu saldo o movimientos bancarios",
+                    "Realizar pagos o transferencias sin tu consentimiento",
+                    "Compartir tus datos con terceros",
+                    "Guardar tu contraseña de Mercado Pago",
+                  ].map(item => (
+                    <div key={item} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                      <span style={{ color: "#16a34a", fontWeight: 700, fontSize: 12 }}>✕</span>
+                      <span style={{ fontSize: 12, color: "#166534" }}>{item}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Seguridad */}
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 8, background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 6, padding: "9px 12px", marginBottom: 14 }}>
+                  <span style={{ fontSize: 14 }}>🔐</span>
+                  <div style={{ fontSize: 12, color: "#1e40af" }}>
+                    Tus credenciales se almacenan <strong>cifradas en nuestros servidores</strong>. Nunca tenemos acceso directo a tu contraseña y podés desvincular tu cuenta en cualquier momento desde esta sección.{" "}
+                    <a href="/privacidad#mercadopago" target="_blank" rel="noopener noreferrer" style={{ color: "#2563eb", fontWeight: 600 }}>
+                      Leer política de privacidad →
+                    </a>
+                  </div>
+                </div>
+
+                {/* Acciones */}
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={async () => {
+                      const { data: { session } } = await supabase.auth.getSession();
+                      const res = await fetch("/api/mp/connect", {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                          "Authorization": `Bearer ${session?.access_token ?? ""}`,
+                        },
+                        credentials: "include",
+                        body: JSON.stringify({ userId: user.id }),
+                      });
+                      const data = await res.json() as { authUrl?: string };
+                      if (data.authUrl) window.location.href = data.authUrl;
+                    }}
+                    style={{
+                      fontSize: 12, fontWeight: 600, color: "#fff",
+                      background: "#009ee3", borderRadius: 6, padding: "7px 16px",
+                      border: "none", cursor: "pointer",
+                    }}
+                  >
+                    Continuar a Mercado Pago
+                  </button>
+                  <button
+                    onClick={() => setShowMpInfo(false)}
+                    style={{ fontSize: 12, color: "var(--text-3)", background: "none", border: "1px solid var(--border)", borderRadius: 6, padding: "7px 14px", cursor: "pointer" }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* ── Imagen de portada ── */}
@@ -1155,7 +1265,7 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
                 Generar
               </button>
             </div>
-            {slugErr && <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4 }}>{slugErr}</div>}
+            {slugErr && <div style={{ fontSize: 12, color: "var(--red)", marginTop: 4 }}>{slugErr}</div>}
             {bSlug && !slugErr && (
               <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>
                 Tu página: <strong style={{ color: "var(--green)" }}>EstamosCerca.com.ar/negocio/{bSlug}</strong>
@@ -1184,6 +1294,20 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
           <div>
             <label style={{ fontSize: 12, fontWeight: 500, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Descripción del negocio</label>
             <textarea value={bDesc} onChange={e => setBDesc(e.target.value)} placeholder="Contá qué vendés, cómo trabajás, dónde estás..." rows={3} style={{ ...fieldInput, resize: "vertical" as const, lineHeight: 1.6 }} />
+          </div>
+
+          {/* Dirección del negocio */}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--text-2)", display: "block", marginBottom: 6 }}>
+              Dirección del negocio
+              <span style={{ fontSize: 11, fontWeight: 400, color: "var(--text-3)", marginLeft: 6 }}>— se mostrará en tu página con un link a Maps</span>
+            </label>
+            <ArgentinaAddressInput
+              initialValue={bAddr}
+              onChange={v => { setBAddr(v); setAddrErr(""); }}
+              error={addrErr}
+              onClearError={() => setAddrErr("")}
+            />
           </div>
 
           {/* CUIT */}
@@ -1223,7 +1347,7 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
               )}
             </div>
             {cuitErr && (
-              <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4 }}>{cuitErr}</div>
+              <div style={{ fontSize: 12, color: "var(--red)", marginTop: 4 }}>{cuitErr}</div>
             )}
             {bCuit.replace(/\D/g, "").length === 11 && validateCuit(bCuit.replace(/\D/g, "")) && (
               <div style={{ fontSize: 12, color: "var(--green)", marginTop: 4, fontWeight: 500 }}>
@@ -1351,7 +1475,7 @@ function ProductMini({
         ) : (
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             <span style={{ fontSize: 11, color: "var(--text-3)" }}>¿Seguro?</span>
-            <button onClick={onDelete} style={{ fontSize: 11, color: "#dc2626", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 600 }}>Sí</button>
+            <button onClick={onDelete} style={{ fontSize: 11, color: "var(--red)", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 600 }}>Sí</button>
             <button onClick={() => setConfirm(false)} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>No</button>
           </div>
         )}

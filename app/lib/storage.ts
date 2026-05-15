@@ -173,6 +173,7 @@ export async function updateProduct(
     lat: number | null;
     lng: number | null;
     pinned: boolean;
+    stock: number;
   }>,
 ): Promise<void> {
   const row: Record<string, unknown> = {};
@@ -191,6 +192,7 @@ export async function updateProduct(
   if (updates.lat           !== undefined) row.lat            = updates.lat;
   if (updates.lng           !== undefined) row.lng            = updates.lng;
   if (updates.pinned        !== undefined) row.pinned         = updates.pinned;
+  if (updates.stock         !== undefined) row.stock          = updates.stock;
   await supabase.from("products").update(row).eq("id", id);
 }
 

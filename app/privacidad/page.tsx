@@ -170,6 +170,14 @@ export default function PrivacidadPage() {
                 {s.title}
               </a>
             ))}
+            <a
+              href="#mercadopago"
+              style={{ fontSize: 13, color: "var(--text-2)", textDecoration: "none" }}
+              onMouseEnter={e => (e.currentTarget.style.color = "var(--green)")}
+              onMouseLeave={e => (e.currentTarget.style.color = "var(--text-2)")}
+            >
+              12. Integración con Mercado Pago
+            </a>
           </div>
         </div>
 
@@ -185,6 +193,50 @@ export default function PrivacidadPage() {
               </div>
             </div>
           ))}
+
+          {/* ── Sección especial: Mercado Pago ── */}
+          <div id="mercadopago">
+            <h2 style={{ fontSize: 16, fontWeight: 700, letterSpacing: -0.2, margin: "0 0 12px", color: "var(--text)" }}>
+              12. Integración con Mercado Pago
+            </h2>
+
+            <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 8, padding: "14px 16px", marginBottom: 18 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#1e40af", marginBottom: 6 }}>
+                ¿Por qué EstamosCerca conecta tu cuenta de Mercado Pago?
+              </div>
+              <div style={{ fontSize: 13, color: "#1e3a8a", lineHeight: 1.7 }}>
+                Los vendedores con Modo Negocio activo pueden vincular su cuenta de Mercado Pago para recibir pagos con tarjeta directamente desde el chat. Esta conexión utiliza el protocolo estándar de autorización OAuth 2.0 — el mismo que usan servicios como Google o Facebook para "Iniciar sesión con…" — y nunca requiere que compartas tu contraseña con nosotros.
+              </div>
+            </div>
+
+            <div style={{ fontSize: 14, color: "var(--text-2)", lineHeight: 1.8, whiteSpace: "pre-line" }}>
+              {`Permisos solicitados y su finalidad:
+
+• Leer información de la cuenta: solo para confirmar que la vinculación fue exitosa y mostrar el estado de la conexión en tu perfil. No accedemos a tu saldo, ni a tus movimientos, ni a tus datos bancarios.
+
+• Realizar cobros en tu nombre: únicamente cuando vos generás un cobro desde el chat. Cada cobro es iniciado explícitamente por vos como vendedor. No se realiza ninguna transacción sin tu acción.
+
+• Acceso sin re-autenticación (offline_access): permite mantener la conexión activa sin pedirte la contraseña cada vez. El token de acceso se renueva automáticamente de forma segura.
+
+Seguridad y almacenamiento:
+
+Los tokens de acceso de Mercado Pago se almacenan cifrados en nuestra base de datos (Supabase), con cifrado en reposo y en tránsito. Ningún miembro del equipo de EstamosCerca puede ver tus tokens en texto plano.
+
+Lo que EstamosCerca NO hace con tu integración de Mercado Pago:
+
+✕ No consultamos tu saldo ni tus movimientos bancarios
+✕ No realizamos pagos o transferencias sin tu acción directa
+✕ No compartimos tus tokens con ningún tercero
+✕ No guardamos ni tenemos acceso a tu contraseña de Mercado Pago
+✕ No utilizamos tu cuenta fuera de la plataforma EstamosCerca
+
+Cómo desvincular tu cuenta:
+
+Podés desvincular tu cuenta de Mercado Pago en cualquier momento desde Perfil → Modo Negocio → Mercado Pago → Desvincular. Esto revoca el acceso de EstamosCerca a tu cuenta de forma inmediata.
+
+Para más información sobre cómo Mercado Pago maneja los datos de aplicaciones conectadas, podés consultar su política de privacidad en mercadopago.com.ar.`}
+            </div>
+          </div>
         </div>
 
         {/* Footer legal */}

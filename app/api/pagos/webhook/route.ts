@@ -1,12 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MercadoPagoConfig, Payment } from "mercadopago";
 import { createClient } from "@supabase/supabase-js";
+import { createHmac } from "crypto";
 
 // Cliente con service role para poder actualizar sin RLS
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
+
+// ── Verificación de firma MP ───────────────────────────────────
+/**
+ * Mercado Pago firma los webhooks con HMAC-SHA256.
+ * Header: x-signature: ts=<timestamp>,v1=<hmac>
+ * Mensaje firmado: id:<payment_id>;request-id:<x-request-id>;ts:<timestamp>;
+ * Doc: https://www.mercadopago.com.ar/developers/es/docs/your-integrations/notifications/webhooks
+ */
+function verifyMpSignature(req: NextRequest, paymentId: string): boolean {
+  const secret = process.env.MP_WEBHOOK_SECRET;
+  // Si no está configurado el secret, omitir verificación (desarrollo)
+  if (!secret) return true;
+
+  const xSignature = req.headers.get("x-signature") ?? "";
+  const xRequestId = req.headers.get("x-request-id") ?? "";
+
+  const tsMatch = xSignature.match(/ts=([^,]+)/);
+  const v1Match = xSignature.match(/v1=([^,]+)/);
+  if (!tsMatch || !v1Match) return false;
+
+  const ts      = tsMatch[1];
+  const v1      = v1Match[1];
+  const message = `id:${paymentId};request-id:${xRequestId};ts:${ts};`;
+
+  const expected = createHmac("sha256", secret)
+    .update(message)
+    .digest("hex");
+
+  return expected === v1;
+}
 
 // ── Helper: obtener pago con un token dado ─────────────────────
 
@@ -27,6 +58,12 @@ export async function POST(req: NextRequest) {
 
     const paymentId = String(body.data?.id ?? "");
     if (!paymentId) return NextResponse.json({ ok: true });
+
+    // Verificar firma HMAC de Mercado Pago
+    if (!verifyMpSignature(req, paymentId)) {
+      console.warn("MP webhook: firma inválida");
+      return NextResponse.json({ error: "Firma inválida" }, { status: 401 });
+    }
 
     // Intentar con token de plataforma primero.
     // Si el pago es de un vendedor con OAuth, fallará → buscar por mp_user_id.
@@ -110,12 +147,32 @@ export async function POST(req: NextRequest) {
       const conversationId = meta?.conversation_id as number | undefined;
       const amount         = payment.transaction_amount as number | undefined;
 
-      // Marcar producto como vendido
+      // Manejar stock: decrementar y solo marcar como vendido cuando llega a 0
+      let stockRemaining = 0;
       if (productId) {
-        await supabaseAdmin
+        const { data: prod } = await supabaseAdmin
           .from("products")
-          .update({ sold: true })
-          .eq("id", productId);
+          .select("stock")
+          .eq("id", productId)
+          .single();
+
+        const currentStock = (prod?.stock as number | null) ?? 1;
+        const newStock = Math.max(0, currentStock - 1);
+        stockRemaining = newStock;
+
+        if (newStock <= 0) {
+          // Sin más stock → marcar como vendido
+          await supabaseAdmin
+            .from("products")
+            .update({ sold: true, stock: 0 })
+            .eq("id", productId);
+        } else {
+          // Quedan unidades → solo decrementar
+          await supabaseAdmin
+            .from("products")
+            .update({ stock: newStock })
+            .eq("id", productId);
+        }
       }
 
       // Enviar mensaje de confirmación automático en el chat
@@ -124,15 +181,19 @@ export async function POST(req: NextRequest) {
           ? `$${amount.toLocaleString("es-AR")}`
           : "el monto acordado";
 
+        const stockNote = stockRemaining > 0
+          ? ` · Quedan ${stockRemaining} unidad${stockRemaining !== 1 ? "es" : ""}`
+          : "";
+
         await supabaseAdmin
           .from("messages")
           .insert({
             conversation_id: conversationId,
             sender_id:       buyerId,
             sender_initials: "✅",
-            text:            `Pago de ${amountStr} confirmado`,
+            text:            `Pago de ${amountStr} confirmado${stockNote}`,
             type:            "payment_confirmed",
-            metadata:        { amount, paymentId: String(paymentId) },
+            metadata:        { amount, paymentId: String(paymentId), stockRemaining },
           });
 
         await supabaseAdmin

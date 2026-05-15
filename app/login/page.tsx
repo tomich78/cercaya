@@ -78,9 +78,9 @@ function LoginForm() {
 
           {globalError && (
             <div style={{
-              background: "#fef2f2", border: "1px solid #fecaca",
+              background: "var(--red-subtle)", border: "1px solid var(--red-border)",
               borderRadius: 6, padding: "9px 12px",
-              fontSize: 13, color: "#dc2626", marginBottom: 16,
+              fontSize: 13, color: "var(--red)", marginBottom: 16,
             }}>
               {globalError}
             </div>

@@ -163,7 +163,7 @@ export default function SellerPage({ params }: { params: Promise<{ id: string }>
         </div>
         {/* Grid de productos */}
         <div className="skeleton" style={{ width: 120, height: 14, borderRadius: 3, marginBottom: 12 }} />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
+        <div className="product-grid">
           {[1,2,3,4].map(i => (
             <div key={i} style={{ borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
               <div className="skeleton" style={{ height: 120 }} />
@@ -274,7 +274,7 @@ export default function SellerPage({ params }: { params: Promise<{ id: string }>
                 {(seller as ProfileSeller).isBusiness && (
                   (seller as ProfileSeller).businessCuitVerified
                     ? <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" as const, padding: "2px 7px", borderRadius: 4, background: "var(--green)", color: "#fff" }}>✓ Verificado</span>
-                    : <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" as const, padding: "2px 7px", borderRadius: 4, background: "#1d4ed8", color: "#fff" }}>Negocio</span>
+                    : <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" as const, padding: "2px 7px", borderRadius: 4, background: "var(--blue)", color: "#fff" }}>Negocio</span>
                 )}
               </div>
               <div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>
@@ -294,7 +294,7 @@ export default function SellerPage({ params }: { params: Promise<{ id: string }>
           <div style={{
             display: "inline-flex", alignItems: "center", gap: 5,
             padding: "4px 10px", borderRadius: 4, fontSize: 12, fontWeight: 600, marginBottom: 18,
-            background: trustLevel === "full" ? "var(--green-subtle)" : trustLevel === "partial" ? "#fef3c7" : "var(--bg)",
+            background: trustLevel === "full" ? "var(--green-subtle)" : trustLevel === "partial" ? "var(--yellow-subtle)" : "var(--bg)",
             color: trustLevel === "full" ? "var(--green)" : trustLevel === "partial" ? "var(--amber)" : "var(--text-3)",
           }}>
             {trustLevel === "full" ? "✓ Verificado completo" :
@@ -484,7 +484,7 @@ export default function SellerPage({ params }: { params: Promise<{ id: string }>
             <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase" as const, letterSpacing: 0.3, marginBottom: 12 }}>
               Publicaciones de {sellerDisplayName.split(" ")[0]}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
+            <div className="product-grid">
               {realProducts.map(p => (
                 <Link key={p.id} href={`/producto/${p.id}`}>
                   <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", cursor: "pointer", transition: "border-color 0.12s" }}

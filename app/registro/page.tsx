@@ -188,9 +188,9 @@ function RegistroForm() {
 
             {globalError && (
               <div style={{
-                background: "#fef2f2", border: "1px solid #fecaca",
+                background: "var(--red-subtle)", border: "1px solid var(--red-border)",
                 borderRadius: 6, padding: "9px 12px",
-                fontSize: 13, color: "#dc2626", marginBottom: 16,
+                fontSize: 13, color: "var(--red)", marginBottom: 16,
               }}>
                 {globalError}
               </div>
@@ -288,7 +288,7 @@ function RegistroForm() {
             <div style={{
               background: "#fef2f2", border: "1px solid #fecaca",
               borderRadius: 6, padding: "9px 12px",
-              fontSize: 13, color: "#dc2626", marginBottom: 16,
+              fontSize: 13, color: "var(--red)", marginBottom: 16,
             }}>
               {globalError}
             </div>
@@ -307,7 +307,7 @@ function RegistroForm() {
                 autoComplete="name"
                 style={inputStyle(!!errors.name)}
               />
-              {errors.name && <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4 }}>{errors.name}</div>}
+              {errors.name && <div style={{ fontSize: 12, color: "var(--red)", marginTop: 4 }}>{errors.name}</div>}
             </div>
 
             {/* Email */}
@@ -323,7 +323,7 @@ function RegistroForm() {
                 autoComplete="email"
                 style={inputStyle(!!errors.email)}
               />
-              {errors.email && <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4 }}>{errors.email}</div>}
+              {errors.email && <div style={{ fontSize: 12, color: "var(--red)", marginTop: 4 }}>{errors.email}</div>}
             </div>
 
             {/* Contraseña */}
@@ -354,7 +354,7 @@ function RegistroForm() {
                   <EyeIcon open={showPassword} />
                 </button>
               </div>
-              {errors.password && <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4 }}>{errors.password}</div>}
+              {errors.password && <div style={{ fontSize: 12, color: "var(--red)", marginTop: 4 }}>{errors.password}</div>}
             </div>
 
             {/* Repetir contraseña */}
@@ -385,7 +385,7 @@ function RegistroForm() {
                   <EyeIcon open={showConfirm} />
                 </button>
               </div>
-              {errors.confirm && <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4 }}>{errors.confirm}</div>}
+              {errors.confirm && <div style={{ fontSize: 12, color: "var(--red)", marginTop: 4 }}>{errors.confirm}</div>}
             </div>
 
             {/* Ubicación */}
@@ -399,7 +399,7 @@ function RegistroForm() {
                 onClear={() => { setForm(f => ({ ...f, location: "" })); setLocationLat(null); setLocationLng(null); }}
                 hasError={!!errors.location}
               />
-              {errors.location && <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4 }}>{errors.location}</div>}
+              {errors.location && <div style={{ fontSize: 12, color: "var(--red)", marginTop: 4 }}>{errors.location}</div>}
               <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 5 }}>
                 Se usa para mostrarte productos cercanos.
               </div>

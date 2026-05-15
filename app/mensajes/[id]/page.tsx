@@ -10,10 +10,12 @@ import {
   getMessages,
   sendMessage,
   markConversationRead,
+  getUserConversations,
+  isConversationUnread,
   type Conversation,
   type Message,
 } from "../../lib/messages";
-import { getProductById } from "../../lib/storage";
+import { getProductById, type LocalProduct } from "../../lib/storage";
 import { supabase } from "../../lib/supabase";
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -80,7 +82,7 @@ function BurbujaNormal({ msg, isMe, otherInit }: { msg: Message; isMe: boolean; 
 // ── Tarjeta de link de pago ───────────────────────────────────
 
 function TarjetaPago({ msg, isMe }: { msg: Message; isMe: boolean }) {
-  const { url, amount, productTitle } = msg.metadata ?? {};
+  const { url, amount, productTitle, disabled } = msg.metadata ?? {};
   return (
     <div style={{
       display: "flex",
@@ -89,17 +91,19 @@ function TarjetaPago({ msg, isMe }: { msg: Message; isMe: boolean }) {
       gap: 8,
     }}>
       <div style={{
-        maxWidth: 280,
-        background: isMe ? "#dcfce7" : "var(--surface)",
-        border: `1px solid ${isMe ? "#86efac" : "var(--border)"}`,
+        maxWidth: "min(280px, 85vw)",
+        background: disabled ? "var(--surface)" : isMe ? "#dcfce7" : "var(--surface)",
+        border: `1px solid ${disabled ? "var(--border)" : isMe ? "#86efac" : "var(--border)"}`,
         borderRadius: 12,
         padding: "12px 14px",
         boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+        opacity: disabled ? 0.7 : 1,
       }}>
-        <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 6, display: "flex", alignItems: "center", gap: 4 }}>
-          <span>💳</span> Solicitud de pago
+        <div style={{ fontSize: 11, color: disabled ? "var(--text-3)" : "var(--text-3)", marginBottom: 6, display: "flex", alignItems: "center", gap: 4 }}>
+          <span>{disabled ? "🚫" : "💳"}</span>
+          {disabled ? "Solicitud de pago vencida" : "Solicitud de pago"}
         </div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", letterSpacing: -0.5, lineHeight: 1.1 }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color: disabled ? "var(--text-3)" : "var(--text)", letterSpacing: -0.5, lineHeight: 1.1 }}>
           ${amount?.toLocaleString("es-AR") ?? "—"}
         </div>
         {productTitle && (
@@ -107,27 +111,35 @@ function TarjetaPago({ msg, isMe }: { msg: Message; isMe: boolean }) {
             {productTitle}
           </div>
         )}
-        {!isMe && url && (
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: "block", marginTop: 10,
-              background: "#009ee3", color: "#fff",
-              border: "none", borderRadius: 7,
-              padding: "8px 14px", fontSize: 13, fontWeight: 600,
-              textAlign: "center", textDecoration: "none",
-              cursor: "pointer",
-            }}
-          >
-            Pagar con Mercado Pago →
-          </a>
-        )}
-        {isMe && (
-          <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 8 }}>
-            Link enviado al comprador
+        {disabled ? (
+          <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 10, padding: "7px 10px", background: "var(--bg)", borderRadius: 6, border: "1px solid var(--border)", textAlign: "center" }}>
+            El vendedor cambió su cuenta de pago.<br />Pedile que genere un nuevo cobro.
           </div>
+        ) : (
+          <>
+            {!isMe && url && (
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "block", marginTop: 10,
+                  background: "#009ee3", color: "#fff",
+                  border: "none", borderRadius: 7,
+                  padding: "8px 14px", fontSize: 13, fontWeight: 600,
+                  textAlign: "center", textDecoration: "none",
+                  cursor: "pointer",
+                }}
+              >
+                Pagar con Mercado Pago →
+              </a>
+            )}
+            {isMe && (
+              <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 8 }}>
+                Link enviado al comprador
+              </div>
+            )}
+          </>
         )}
         <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 6, textAlign: isMe ? "right" : "left" }}>
           {timeAgo(msg.createdAt)}
@@ -193,9 +205,13 @@ function PanelCobro({
     setLoading(true);
     setError("");
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch("/api/pagos/producto", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session?.access_token ?? ""}`,
+        },
         body: JSON.stringify({
           sellerId:       user.id,
           buyerId:        conv.buyerId,
@@ -298,6 +314,224 @@ function PanelCobro({
   );
 }
 
+// ── Panel de chats recientes ──────────────────────────────────
+
+function RecentChatsPanel({
+  convs,
+  currentId,
+  userId,
+}: {
+  convs: Array<{ conv: Conversation; unread: boolean }>;
+  currentId: number;
+  userId: string;
+}) {
+  return (
+    <div style={{ padding: "14px 10px", display: "flex", flexDirection: "column" as const, gap: 2 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase" as const, letterSpacing: 0.8, marginBottom: 8, paddingLeft: 4 }}>
+        Chats recientes
+      </div>
+
+      {convs.length === 0 && (
+        <div style={{ fontSize: 11, color: "var(--text-3)", textAlign: "center", padding: "12px 0" }}>
+          Sin chats aún
+        </div>
+      )}
+
+      {convs.map(({ conv, unread }) => {
+        const isCurrent  = conv.id === currentId;
+        const otherName  = conv.buyerId === userId ? conv.sellerName : conv.buyerName;
+        const lastMsg    = conv.lastMessage ?? "";
+        return (
+          <Link
+            key={conv.id}
+            href={`/mensajes/${conv.id}`}
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "7px 8px", borderRadius: 7, textDecoration: "none",
+              background: isCurrent ? "var(--green-subtle)" : "transparent",
+              border: `1px solid ${isCurrent ? "var(--green)" : "transparent"}`,
+              transition: "background 0.1s",
+            }}
+            onMouseEnter={e => { if (!isCurrent) e.currentTarget.style.background = "var(--border)"; }}
+            onMouseLeave={e => { if (!isCurrent) e.currentTarget.style.background = "transparent"; }}
+          >
+            {/* Emoji del producto */}
+            <div style={{
+              width: 30, height: 30, borderRadius: 6, flexShrink: 0,
+              background: conv.productBg,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 15,
+            }}>
+              {conv.productEmoji}
+            </div>
+
+            {/* Info */}
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{
+                fontSize: 12, fontWeight: unread && !isCurrent ? 700 : 500,
+                color: isCurrent ? "var(--green)" : "var(--text)",
+                whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis",
+              }}>
+                {otherName.split(" ")[0]}
+              </div>
+              <div style={{
+                fontSize: 10, color: "var(--text-3)",
+                whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis",
+              }}>
+                {lastMsg || conv.productTitle}
+              </div>
+            </div>
+
+            {/* Punto de no leído */}
+            {unread && !isCurrent && (
+              <div style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--green)", flexShrink: 0 }} />
+            )}
+          </Link>
+        );
+      })}
+
+      <Link
+        href="/mensajes"
+        style={{
+          display: "block", textAlign: "center", marginTop: 10,
+          fontSize: 10, color: "var(--text-3)", textDecoration: "none",
+          padding: "4px",
+        }}
+        onMouseEnter={e => (e.currentTarget.style.color = "var(--text)")}
+        onMouseLeave={e => (e.currentTarget.style.color = "var(--text-3)")}
+      >
+        Ver todos →
+      </Link>
+    </div>
+  );
+}
+
+// ── Sidebar de producto ───────────────────────────────────────
+
+function ProductoSidebar({ product, conv }: { product: LocalProduct | null; conv: Conversation }) {
+  const hasSold = product?.sold;
+  return (
+    <div style={{ padding: "14px 12px", display: "flex", flexDirection: "column" as const, gap: 10 }}>
+
+      {/* Título del panel */}
+      <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase" as const, letterSpacing: 0.8 }}>
+        Producto
+      </div>
+
+      {/* Imagen compacta */}
+      <Link href={`/producto/${conv.productId}`} style={{ textDecoration: "none", display: "block" }}>
+        <div style={{
+          width: "100%", height: 120,
+          borderRadius: 8, overflow: "hidden",
+          background: conv.productBg,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          position: "relative", flexShrink: 0,
+        }}>
+          {product?.images?.[0] ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={product.images[0]}
+              alt={conv.productTitle}
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            />
+          ) : (
+            <span style={{ fontSize: 36 }}>{conv.productEmoji}</span>
+          )}
+          {hasSold && (
+            <div style={{
+              position: "absolute", top: 6, right: 6,
+              background: "rgba(0,0,0,0.65)", color: "#fff",
+              fontSize: 9, fontWeight: 700, padding: "2px 6px",
+              borderRadius: 4, letterSpacing: 0.3,
+            }}>
+              VENDIDO
+            </div>
+          )}
+        </div>
+      </Link>
+
+      {/* Título + precio */}
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", lineHeight: 1.35, marginBottom: 3 }}>
+          {conv.productTitle}
+        </div>
+        {product?.price && (
+          <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", letterSpacing: -0.3 }}>
+            {product.price}
+          </div>
+        )}
+      </div>
+
+      {/* Badges */}
+      {(product?.condition || product?.negotiable) && (
+        <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 4 }}>
+          {product?.condition && (
+            <span style={{
+              fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 4,
+              background: product.condition === "Nuevo" ? "var(--blue-subtle)" : "var(--green-subtle)",
+              color: product.condition === "Nuevo" ? "var(--blue)" : "var(--green)",
+              border: `1px solid ${product.condition === "Nuevo" ? "var(--blue)" : "var(--green)"}`,
+              opacity: 0.85,
+            }}>
+              {product.condition}
+            </span>
+          )}
+          {product?.negotiable && (
+            <span style={{
+              fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 4,
+              background: "var(--green-bg)", color: "var(--green)", border: "1px solid var(--green-border)",
+            }}>
+              Negociable
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Descripción */}
+      {product?.description && (
+        <div style={{
+          fontSize: 11, color: "var(--text-2)", lineHeight: 1.55,
+          display: "-webkit-box", WebkitLineClamp: 3,
+          WebkitBoxOrient: "vertical" as const, overflow: "hidden",
+        }}>
+          {product.description}
+        </div>
+      )}
+
+      {/* Ubicación y entrega */}
+      <div style={{ display: "flex", flexDirection: "column" as const, gap: 4 }}>
+        {product?.location && (
+          <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--text-3)" }}>
+            <span>📍</span>
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
+              {product.location}
+            </span>
+          </div>
+        )}
+        {product?.delivery && (
+          <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--text-3)" }}>
+            <span>{product.delivery === "envio" ? "🚚" : product.delivery === "retiro" ? "🤝" : "🚚🤝"}</span>
+            {product.delivery === "envio" ? "Envío disponible" : product.delivery === "retiro" ? "Solo retiro" : "Envío o retiro"}
+          </div>
+        )}
+      </div>
+
+      {/* Link */}
+      <Link
+        href={`/producto/${conv.productId}`}
+        style={{
+          display: "block", textAlign: "center", marginTop: 4,
+          fontSize: 11, fontWeight: 600, color: "var(--green)",
+          background: "var(--green-subtle)", border: "1px solid var(--green)",
+          borderRadius: 6, padding: "6px 10px", textDecoration: "none",
+        }}
+      >
+        Ver publicación →
+      </Link>
+    </div>
+  );
+}
+
 // ── Página principal ──────────────────────────────────────────
 
 export default function ChatPage({ params }: { params: Promise<{ id: string }> }) {
@@ -308,12 +542,14 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   const messagesRef    = useRef<HTMLDivElement>(null);
   const isInitialLoad  = useRef(true);
 
-  const [user,     setUser]     = useState<LocalUser | null>(null);
-  const [conv,     setConv]     = useState<Conversation | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [text,     setText]     = useState("");
-  const [ready,    setReady]    = useState(false);
-  const [payPanel, setPayPanel] = useState(false);
+  const [user,        setUser]        = useState<LocalUser | null>(null);
+  const [conv,        setConv]        = useState<Conversation | null>(null);
+  const [product,     setProduct]     = useState<LocalProduct | null>(null);
+  const [recentConvs, setRecentConvs] = useState<Array<{ conv: Conversation; unread: boolean }>>([]);
+  const [messages,    setMessages]    = useState<Message[]>([]);
+  const [text,        setText]        = useState("");
+  const [ready,       setReady]       = useState(false);
+  const [payPanel,    setPayPanel]    = useState(false);
 
   const titleOtherName = conv ? (conv.buyerId === user?.id ? conv.sellerName : conv.buyerName) : undefined;
   usePageTitle(titleOtherName ? `Chat con ${titleOtherName}` : "Mensajes");
@@ -328,6 +564,17 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
       setConv(c);
       setMessages(await getMessages(c.id));
       await markConversationRead(c.id, u.id);
+      if (c.productId) {
+        const p = await getProductById(c.productId);
+        if (p) setProduct(p);
+      }
+
+      // Cargar últimos 5 chats con estado de no leído
+      const allConvs = await getUserConversations(u.id);
+      const withUnread = await Promise.all(
+        allConvs.slice(0, 5).map(async rc => ({ conv: rc, unread: await isConversationUnread(rc, u.id) })),
+      );
+      setRecentConvs(withUnread);
 
       const draftKey = `estamosCerca_draft_${c.id}`;
       const draft = sessionStorage.getItem(draftKey);
@@ -377,6 +624,27 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [conv]);
+
+  // Real-time: actualizar chats recientes cuando llega un mensaje en CUALQUIER conv del usuario
+  useEffect(() => {
+    if (!user) return;
+    const uid = user.id;
+    const ch = supabase
+      .channel("recent-convs-watch")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "conversations" },
+        async (payload) => {
+          const r = payload.new as Record<string, unknown>;
+          if (r.buyer_id === uid || r.seller_id === uid) {
+            const all = await getUserConversations(uid);
+            const withUnread = await Promise.all(
+              all.slice(0, 5).map(async rc => ({ conv: rc, unread: await isConversationUnread(rc, uid) })),
+            );
+            setRecentConvs(withUnread);
+          }
+        })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [user]);
 
   function autoResize() {
     const el = textareaRef.current;
@@ -467,6 +735,17 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   return (
     <div className="chat-wrap" style={{ display: "flex", flexDirection: "column" }}>
       <Navbar />
+
+      {/* Layout principal: 3 columnas */}
+      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+
+      {/* Izquierda: chats recientes */}
+      <aside className="chat-side-panel" style={{ borderRight: "1px solid var(--border)" }}>
+        <RecentChatsPanel convs={recentConvs} currentId={conv.id} userId={user.id} />
+      </aside>
+
+      {/* Centro: chat */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column" as const, overflow: "hidden", minWidth: 0 }}>
 
       {/* Header */}
       <div style={{
@@ -662,6 +941,15 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
           </button>
         </div>
       </div>
+
+      </div> {/* fin centro chat */}
+
+      {/* Derecha: producto */}
+      <aside className="chat-side-panel" style={{ borderLeft: "1px solid var(--border)" }}>
+        <ProductoSidebar product={product} conv={conv} />
+      </aside>
+
+      </div> {/* fin layout principal */}
     </div>
   );
 }

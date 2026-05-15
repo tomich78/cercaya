@@ -259,9 +259,38 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
             <div style={{ fontSize: 26, fontWeight: 700, color: "var(--green)", marginBottom: 8, letterSpacing: -0.8 }}>
               {displayed.price}
             </div>
-            <div style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 16 }}>
+            <div style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 10 }}>
               {displayed.location} · <span style={{ color: "var(--green)", fontWeight: 500 }}>{displayed.distance}</span>
             </div>
+
+            {/* Stock */}
+            {!displayed.sold && typeof displayed.stock === "number" && (
+              <div style={{ marginBottom: 16 }}>
+                {displayed.stock <= 3 ? (
+                  <span style={{
+                    display: "inline-flex", alignItems: "center", gap: 5,
+                    fontSize: 12, fontWeight: 600,
+                    color: "var(--yellow-text)",
+                    background: "var(--yellow-subtle)",
+                    border: "1px solid var(--yellow-border)",
+                    borderRadius: 5, padding: "3px 9px",
+                  }}>
+                    ⚠️ {displayed.stock === 1 ? "¡Última unidad!" : `Solo ${displayed.stock} unidades`}
+                  </span>
+                ) : (
+                  <span style={{
+                    display: "inline-flex", alignItems: "center", gap: 5,
+                    fontSize: 12, fontWeight: 500,
+                    color: "var(--text-3)",
+                    background: "var(--surface)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 5, padding: "3px 9px",
+                  }}>
+                    📦 {displayed.stock} unidades disponibles
+                  </span>
+                )}
+              </div>
+            )}
 
             {/* Botones de compartir */}
             <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
@@ -298,7 +327,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                   color: "#25d366", cursor: "pointer",
                   transition: "background 0.1s, border-color 0.1s",
                 }}
-                onMouseEnter={e => { e.currentTarget.style.background = "#f0fdf4"; e.currentTarget.style.borderColor = "#25d366"; }}
+                onMouseEnter={e => { e.currentTarget.style.background = "var(--green-bg)"; e.currentTarget.style.borderColor = "#25d366"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = "var(--surface)"; e.currentTarget.style.borderColor = "var(--border)"; }}
               >
                 {/* WhatsApp icon */}
@@ -327,7 +356,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                 display: "flex", alignItems: "center", gap: 12, background: "var(--surface)", marginBottom: 10,
               }}>
                 <div style={{
-                  width: 34, height: 34, background: "#111", borderRadius: 6,
+                  width: 34, height: 34, background: "var(--text)", borderRadius: 6,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   color: "#fff", fontWeight: 800, fontSize: 13, flexShrink: 0,
                 }}>U</div>
@@ -384,7 +413,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                       {localUser.isBusiness && (
                         localUser.businessCuitVerified
                           ? <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" as const, padding: "1px 6px", borderRadius: 3, background: "var(--green)", color: "#fff" }}>✓ Verificado</span>
-                          : <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" as const, padding: "1px 6px", borderRadius: 3, background: "#1d4ed8", color: "#fff" }}>Negocio</span>
+                          : <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" as const, padding: "1px 6px", borderRadius: 3, background: "var(--blue)", color: "#fff" }}>Negocio</span>
                       )}
                     </div>
                     <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>

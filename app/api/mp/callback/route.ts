@@ -6,6 +6,26 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
+/** Marca como disabled:true todos los mensajes payment_link del vendedor */
+async function disableSellerPaymentLinks(sellerId: string) {
+  const { data: msgs } = await supabaseAdmin
+    .from("messages")
+    .select("id, metadata")
+    .eq("sender_id", sellerId)
+    .eq("type", "payment_link");
+
+  if (!msgs || msgs.length === 0) return;
+
+  await Promise.all(
+    msgs.map(m =>
+      supabaseAdmin
+        .from("messages")
+        .update({ metadata: { ...(m.metadata as Record<string, unknown>), disabled: true } })
+        .eq("id", m.id),
+    ),
+  );
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const code   = searchParams.get("code");
@@ -65,6 +85,18 @@ export async function GET(req: NextRequest) {
       refresh_token: string;
       user_id:       number;
     };
+
+    // Si el vendedor tenía una cuenta MP distinta, deshabilitar sus links viejos
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("mp_user_id")
+      .eq("id", userId)
+      .single();
+
+    const previousMpUserId = profile?.mp_user_id;
+    if (previousMpUserId && previousMpUserId !== data.user_id) {
+      await disableSellerPaymentLinks(userId);
+    }
 
     await supabaseAdmin
       .from("profiles")

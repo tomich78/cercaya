@@ -643,7 +643,7 @@ function HomeInner() {
         </div>
 
         {/* Grid con slots de publicidad cada 4 productos */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: 12 }}>
+        <div className="product-grid">
           {loading
             ? Array.from({ length: PAGE_SIZE }).map((_, i) => <ProductCardSkeleton key={i} />)
             : visibleProducts.flatMap(({ _km: _ignored, ...p }, idx) => {
@@ -696,7 +696,7 @@ function HomeInner() {
 
         {/* Skeletons de "cargando más" */}
         {!loading && hasMore && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: 12, marginTop: 12 }}>
+          <div className="product-grid" style={{ marginTop: 12 }}>
             {Array.from({ length: 4 }).map((_, i) => <ProductCardSkeleton key={i} />)}
           </div>
         )}

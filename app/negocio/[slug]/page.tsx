@@ -22,6 +22,7 @@ interface BusinessProfile {
   avatarUrl?: string;
   coverUrl?: string;
   location?: string;
+  businessAddress?: string;
   createdAt: string;
 }
 
@@ -75,7 +76,7 @@ function BusinessPageSkeleton() {
           </div>
         </div>
         {/* Grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 14 }}>
+        <div className="product-grid">
           {[1,2,3,4].map(i => (
             <div key={i} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
               <div className="skeleton" style={{ height: 130 }} />
@@ -119,6 +120,17 @@ export default function NegocioPage() {
       // Incrementar visitas a la página (fire & forget)
       incrementProfileViews(profile.id as string);
 
+      // Intentar traer la dirección del negocio (columna puede no existir aún)
+      let businessAddress: string | undefined;
+      try {
+        const { data: addrData } = await supabase
+          .from("profiles")
+          .select("business_address")
+          .eq("id", profile.id as string)
+          .single();
+        businessAddress = (addrData as Record<string, unknown> | null)?.business_address as string | undefined;
+      } catch { /* columna aún no existe, ignorar */ }
+
       setBiz({
         id:                   profile.id as string,
         name:                 profile.name as string,
@@ -131,6 +143,7 @@ export default function NegocioPage() {
         avatarUrl:            profile.avatar_url as string | undefined,
         coverUrl:             profile.business_cover_url as string | undefined,
         location:             profile.location as string | undefined,
+        businessAddress,
         createdAt:            profile.created_at as string,
       });
 
@@ -232,7 +245,7 @@ export default function NegocioPage() {
                 ) : (
                   <span style={{
                     fontSize: 11, fontWeight: 700, letterSpacing: 0.3,
-                    background: "#1d4ed8", color: "#fff",
+                    background: "var(--blue)", color: "#fff",
                     padding: "3px 9px", borderRadius: 20,
                   }}>🏪 Negocio</span>
                 )}
@@ -242,11 +255,33 @@ export default function NegocioPage() {
                 {biz_.businessCategory && (
                   <span>📦 {biz_.businessCategory}</span>
                 )}
-                {biz_.location && (
+                {biz_.location && !biz_.businessAddress && (
                   <span>📍 {biz_.location}</span>
                 )}
                 <span>🗓 En EstamosCerca desde {memberSince(biz_.createdAt)}</span>
               </div>
+
+              {/* Dirección con link a Maps */}
+              {biz_.businessAddress && (
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(biz_.businessAddress)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    fontSize: 12, color: "var(--text-2)",
+                    background: "var(--bg)", border: "1px solid var(--border)",
+                    borderRadius: 6, padding: "5px 10px",
+                    textDecoration: "none", marginBottom: 10,
+                    transition: "border-color 0.12s",
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.borderColor = "var(--text-3)")}
+                  onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--border)")}
+                >
+                  📍 {biz_.businessAddress}
+                  <span style={{ fontSize: 10, color: "var(--text-3)" }}>— Ver en Maps →</span>
+                </a>
+              )}
 
               {biz_.businessDesc && (
                 <p style={{ fontSize: 14, color: "var(--text-2)", lineHeight: 1.7, margin: 0, maxWidth: 520 }}>
@@ -296,11 +331,7 @@ export default function NegocioPage() {
             <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: -0.2, marginBottom: 16, display: "flex", alignItems: "center", gap: 6 }}>
               <span>📌</span> Destacados por el negocio
             </div>
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-              gap: 14,
-            }}>
+            <div className="product-grid">
               {pinnedProducts.map(p => (
                 <ProductCard
                   key={p.id}
@@ -334,11 +365,7 @@ export default function NegocioPage() {
               Este negocio no tiene publicaciones activas por el momento.
             </div>
           ) : restProducts.length === 0 ? null : (
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-              gap: 14,
-            }}>
+            <div className="product-grid">
               {restProducts.map(p => (
                 <ProductCard
                   key={p.id}

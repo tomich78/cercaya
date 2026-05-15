@@ -1,22 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getAuthUser, unauthorized } from "../_auth";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL!;
+// ADMIN_EMAIL debe ser una variable sin NEXT_PUBLIC_ para que no se filtre al cliente
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL!;
 
-// Verificar que el request viene del admin
 async function verifyAdmin(req: NextRequest): Promise<boolean> {
-  const authHeader = req.headers.get("x-admin-email");
-  return authHeader === ADMIN_EMAIL;
+  const user = await getAuthUser(req);
+  if (!user) return false;
+  return user.email === ADMIN_EMAIL;
 }
 
 export async function POST(req: NextRequest) {
   if (!await verifyAdmin(req)) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    return unauthorized();
   }
 
   const body = await req.json();

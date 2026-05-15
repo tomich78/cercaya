@@ -116,7 +116,7 @@ export default function FloatingChat() {
   if (hidden || !userId) return null;
 
   return (
-    <div ref={panelRef} style={{ position: "fixed", bottom: 24, right: 24, zIndex: 1000 }}>
+    <div ref={panelRef} className="hide-mobile" style={{ position: "fixed", bottom: 24, right: 24, zIndex: 1000 }}>
 
       {/* ── Panel de conversaciones ── */}
       {open && (

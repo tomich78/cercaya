@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
-import type { TipoPago } from "../api/pagos/preferencia/route";
+import type { TipoPago } from "../lib/pagos";
+import { supabase } from "../lib/supabase";
 
 interface Props {
   tipo: TipoPago;
@@ -20,9 +21,13 @@ export default function BotonPago({ tipo, userId, productId, label, descripcion,
     setLoading(true);
     setError("");
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch("/api/pagos/preferencia", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session?.access_token ?? ""}`,
+        },
         body: JSON.stringify({ tipo, userId, productId }),
       });
       const data = await res.json();

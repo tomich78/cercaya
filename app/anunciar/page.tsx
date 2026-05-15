@@ -7,7 +7,7 @@ import BotonPago from "../components/BotonPago";
 import { usePageTitle } from "../lib/usePageTitle";
 import { getCurrentUser, type LocalUser } from "../lib/auth";
 import { getLocalProducts, type LocalProduct } from "../lib/storage";
-import { PRECIOS } from "../api/pagos/preferencia/route";
+import { PRECIOS } from "../lib/pagos";
 import { STATS, HOW_IT_WORKS } from "./data";
 
 export default function AnunciarPage() {

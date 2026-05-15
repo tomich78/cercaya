@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MercadoPagoConfig, Preference } from "mercadopago";
 import { createClient } from "@supabase/supabase-js";
+import { getAuthUser, unauthorized } from "../../_auth";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,6 +9,10 @@ const supabaseAdmin = createClient(
 );
 
 export async function POST(req: NextRequest) {
+  // Verificar que el usuario esté autenticado
+  const authUser = await getAuthUser(req);
+  if (!authUser) return unauthorized();
+
   try {
     const { sellerId, buyerId, productId, conversationId, amount, title } =
       await req.json() as {
@@ -21,6 +26,11 @@ export async function POST(req: NextRequest) {
 
     if (!sellerId || !buyerId || !productId || !conversationId || !amount || !title) {
       return NextResponse.json({ error: "Parámetros incompletos" }, { status: 400 });
+    }
+
+    // Solo el comprador puede crear un link de pago para sí mismo
+    if (authUser.id !== buyerId) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
     // Obtener token MP del vendedor

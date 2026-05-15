@@ -60,7 +60,7 @@ export default function GuardadosPage() {
 
         {/* Grid */}
         {savedProducts.length > 0 ? (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: 12 }}>
+          <div className="product-grid">
             {savedProducts.map(p => (
               <ProductCard key={p.id} product={p} />
             ))}

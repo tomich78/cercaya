@@ -6,12 +6,22 @@ import Navbar from "../components/Navbar";
 import { getCurrentUser } from "../lib/auth";
 import { supabase } from "../lib/supabase";
 
+// Email solo se usa para la redirección UI (guard de UX). La auth real es JWT en el servidor.
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "";
 
 async function adminAction(action: string, userId?: string, productId?: number) {
+  // Obtener el JWT de Supabase para autenticar la request en el servidor
+  const { supabase: sb } = await import("../lib/supabase");
+  const { data: { session } } = await sb.auth.getSession();
+  const token = session?.access_token;
+  if (!token) return false;
+
   const res = await fetch("/api/admin", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-admin-email": ADMIN_EMAIL },
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
     body: JSON.stringify({ action, userId, productId }),
   });
   return res.ok;
@@ -118,10 +128,10 @@ export default function AdminPage() {
             { label: "Usuarios",        value: stats.totalUsers,       alert: false },
           ].map(s => (
             <div key={s.label} style={{
-              background: s.alert ? "#fef3c7" : "var(--surface)",
+              background: s.alert ? "var(--yellow-subtle)" : "var(--surface)",
               border: "1px solid var(--border)", borderRadius: 8, padding: "12px 14px",
             }}>
-              <div style={{ fontSize: 22, fontWeight: 800, color: s.alert ? "#d97706" : "var(--text)", letterSpacing: -1 }}>{s.value}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: s.alert ? "var(--amber)" : "var(--text)", letterSpacing: -1 }}>{s.value}</div>
               <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{s.label}</div>
             </div>
           ))}
@@ -515,7 +525,7 @@ function UsuariosTab({ acting, setActing }: { acting: string | null; setActing: 
                 <td style={{ padding: "10px 12px", color: "var(--text-3)", fontSize: 12 }}>{r.location}</td>
                 <td style={{ padding: "10px 12px" }}>
                   {r.isBusiness
-                    ? <span style={{ fontSize: 11, fontWeight: 600, color: "#1d4ed8", background: "#dbeafe", padding: "2px 7px", borderRadius: 4 }}>Negocio</span>
+                    ? <span style={{ fontSize: 11, fontWeight: 600, color: "var(--blue)", background: "var(--blue-subtle)", padding: "2px 7px", borderRadius: 4 }}>Negocio</span>
                     : <span style={{ fontSize: 11, color: "var(--text-3)" }}>Usuario</span>}
                 </td>
                 <td style={{ padding: "10px 12px" }}>
