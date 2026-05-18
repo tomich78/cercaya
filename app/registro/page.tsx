@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
 import LocationInput from "../components/LocationInput";
+import GoogleButton from "../components/GoogleButton";
 import { register, updateUser } from "../lib/auth";
 
 function inputStyle(hasError: boolean): React.CSSProperties {
@@ -44,7 +45,7 @@ function RegistroForm() {
   // "form" → llenado del formulario | "confirm" → revisión antes de crear
   const [step, setStep] = useState<"form" | "confirm">("form");
 
-  const [form, setForm] = useState({ name: "", email: "", password: "", confirm: "", location: "" });
+  const [form, setForm] = useState({ name: "", email: "", dni: "", password: "", confirm: "", location: "" });
   const [locationLat, setLocationLat] = useState<number | null>(null);
   const [locationLng, setLocationLng] = useState<number | null>(null);
   const [errors, setErrors]           = useState<Record<string, string>>({});
@@ -73,6 +74,8 @@ function RegistroForm() {
     if (!form.name.trim())     e.name     = "Obligatorio";
     if (!form.email.trim())    e.email    = "Obligatorio";
     else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = "Email inválido";
+    if (!form.dni.trim())      e.dni      = "Obligatorio";
+    else if (!/^\d{7,8}$/.test(form.dni.trim())) e.dni = "El DNI debe tener 7 u 8 dígitos";
     if (!form.password)        e.password = "Obligatorio";
     else if (form.password.length < 6) e.password = "Mínimo 6 caracteres";
     if (!form.confirm)         e.confirm  = "Obligatorio";
@@ -83,10 +86,31 @@ function RegistroForm() {
   }
 
   // Paso 1: validar y avanzar a la confirmación
-  function handleNext(e: React.FormEvent) {
+  async function handleNext(e: React.FormEvent) {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+
+    // Verificar unicidad del DNI antes de avanzar
+    setLoading(true);
+    try {
+      const res  = await fetch("/api/check-dni", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dni: form.dni.trim() }),
+      });
+      const data = await res.json() as { available?: boolean; error?: string };
+      if (!data.available) {
+        setErrors(errs => ({ ...errs, dni: data.error ?? "DNI no disponible" }));
+        return;
+      }
+    } catch {
+      setGlobalError("Error de conexión. Intentá de nuevo.");
+      return;
+    } finally {
+      setLoading(false);
+    }
+
     setStep("confirm");
   }
 
@@ -103,11 +127,12 @@ function RegistroForm() {
       return;
     }
 
-    if (result.user && locationLat && locationLng) {
+    if (result.user) {
       await updateUser(result.user.id, {
-        location: form.location,
-        lat: locationLat,
-        lng: locationLng,
+        dniNumber: form.dni.trim(),
+        ...(locationLat && locationLng
+          ? { location: form.location, lat: locationLat, lng: locationLng }
+          : {}),
       });
     }
 
@@ -204,6 +229,7 @@ function RegistroForm() {
               {[
                 { label: "Nombre", value: form.name, icon: "👤" },
                 { label: "Email",  value: form.email, icon: "✉️" },
+                { label: "DNI",    value: form.dni.trim().slice(0, 2) + "•".repeat(Math.max(0, form.dni.trim().length - 4)) + form.dni.trim().slice(-2), icon: "🪪" },
                 { label: "Zona",   value: form.location, icon: "📍" },
                 { label: "Contraseña", value: "••••••••", icon: "🔒" },
               ].map((row, i, arr) => (
@@ -294,6 +320,16 @@ function RegistroForm() {
             </div>
           )}
 
+          {/* Google */}
+          <GoogleButton redirect={redirect} />
+
+          {/* Divisor */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "4px 0" }}>
+            <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+            <span style={{ fontSize: 12, color: "var(--text-3)" }}>o registrate con email</span>
+            <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+          </div>
+
           <form onSubmit={handleNext} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {/* Nombre */}
             <div>
@@ -324,6 +360,28 @@ function RegistroForm() {
                 style={inputStyle(!!errors.email)}
               />
               {errors.email && <div style={{ fontSize: 12, color: "var(--red)", marginTop: 4 }}>{errors.email}</div>}
+            </div>
+
+            {/* DNI */}
+            <div>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 5 }}>
+                DNI
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={form.dni}
+                onChange={e => setField("dni", e.target.value.replace(/\D/g, "").slice(0, 8))}
+                placeholder="Ej: 38521467"
+                autoComplete="off"
+                style={inputStyle(!!errors.dni)}
+              />
+              {errors.dni
+                ? <div style={{ fontSize: 12, color: "var(--red)", marginTop: 4 }}>{errors.dni}</div>
+                : <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 5 }}>
+                    Se usa para evitar cuentas duplicadas. Solo vos podés verlo.
+                  </div>
+              }
             </div>
 
             {/* Contraseña */}
@@ -407,15 +465,17 @@ function RegistroForm() {
 
             <button
               type="submit"
+              disabled={loading}
               style={{
                 background: "var(--green)", color: "#fff",
                 border: "none", borderRadius: 6,
                 padding: "11px", fontSize: 14, fontWeight: 500,
-                cursor: "pointer",
+                cursor: loading ? "default" : "pointer",
+                opacity: loading ? 0.7 : 1,
                 marginTop: 4,
               }}
             >
-              Siguiente →
+              {loading ? "Verificando..." : "Siguiente →"}
             </button>
           </form>
 

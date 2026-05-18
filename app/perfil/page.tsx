@@ -5,7 +5,7 @@ import Link from "next/link";
 import Navbar from "../components/Navbar";
 import LocationInput from "../components/LocationInput";
 import { getCurrentUser, updateUser, uploadAvatar, uploadDniDoc, uploadBusinessCover, validateCuit, formatCuit, type LocalUser } from "../lib/auth";
-import { getLocalProducts, deleteLocalProduct, updateProduct, getBusinessStats, type LocalProduct, type BusinessStats } from "../lib/storage";
+import { getLocalProducts, deleteLocalProduct, updateProduct, renewProduct, getBusinessStats, type LocalProduct, type BusinessStats } from "../lib/storage";
 import { getReviewsForSeller, type Review } from "../lib/reviews";
 import { useToast } from "../components/ToastProvider";
 import { usePageTitle } from "../lib/usePageTitle";
@@ -450,7 +450,7 @@ export default function PerfilPage() {
     const u = await getCurrentUser();
     if (!u) return;
     setUser({ ...u });
-    setMyProducts((await getLocalProducts({ includeSold: true })).filter(p => p.userId === u.id));
+    setMyProducts((await getLocalProducts({ includeSold: true, includeExpired: true })).filter(p => p.userId === u.id));
     setMyReviews(await getReviewsForSeller(u.id));
   }
 
@@ -459,7 +459,7 @@ export default function PerfilPage() {
       const u = await getCurrentUser();
       if (!u) { router.replace("/login?redirect=/perfil"); return; }
       setUser(u);
-      setMyProducts((await getLocalProducts({ includeSold: true })).filter(p => p.userId === u.id));
+      setMyProducts((await getLocalProducts({ includeSold: true, includeExpired: true })).filter(p => p.userId === u.id));
       setMyReviews(await getReviewsForSeller(u.id));
       setReady(true);
     })();
@@ -712,6 +712,12 @@ export default function PerfilPage() {
                     await updateProduct(p.id, { pinned: newPinned });
                     setMyProducts(prev => prev.map(x => x.id === p.id ? { ...x, pinned: newPinned } : x));
                     toast(newPinned ? "📌 Producto fijado en tu página" : "Producto desfijado", "info");
+                  }}
+                  onRenew={async () => {
+                    await renewProduct(p.id);
+                    const newExpiry = new Date(Date.now() + 60 * 86_400_000).toISOString();
+                    setMyProducts(prev => prev.map(x => x.id === p.id ? { ...x, expiresAt: newExpiry } : x));
+                    toast("Publicación renovada por 60 días ✓");
                   }}
                 />
               ))}
@@ -1376,21 +1382,50 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
 
 // ─── ProductMini ──────────────────────────────────────────────────────────────
 
+function daysUntilExpiry(expiresAt?: string): number | null {
+  if (!expiresAt) return null;
+  return Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 86_400_000);
+}
+
+function ExpiryBadge({ days }: { days: number | null }) {
+  if (days === null) return null;
+  if (days <= 0) return (
+    <span style={{ fontSize: 10, fontWeight: 700, background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca", padding: "2px 6px", borderRadius: 4 }}>
+      Vencida
+    </span>
+  );
+  if (days <= 7) return (
+    <span style={{ fontSize: 10, fontWeight: 600, background: "#fffbeb", color: "#d97706", border: "1px solid #fde68a", padding: "2px 6px", borderRadius: 4 }}>
+      {days}d restantes
+    </span>
+  );
+  return (
+    <span style={{ fontSize: 10, color: "var(--text-3)", padding: "2px 0" }}>
+      {days}d
+    </span>
+  );
+}
+
 function ProductMini({
   product,
   isBusiness,
   onDelete,
   onToggleSold,
   onTogglePinned,
+  onRenew,
 }: {
   product: LocalProduct;
   isBusiness?: boolean;
   onDelete: () => void;
   onToggleSold: () => void;
   onTogglePinned?: () => void;
+  onRenew?: () => Promise<void>;
 }) {
-  const [confirm, setConfirm] = useState(false);
+  const [confirm,   setConfirm]   = useState(false);
+  const [renewing,  setRenewing]  = useState(false);
   const coverImage = product.images?.[0];
+  const days       = daysUntilExpiry(product.expiresAt);
+  const isExpired  = days !== null && days <= 0;
 
   return (
     <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
@@ -1416,6 +1451,18 @@ function ProductMini({
               </span>
             </div>
           )}
+          {/* Badge vencida */}
+          {!product.sold && isExpired && (
+            <div style={{
+              position: "absolute", inset: 0,
+              background: "rgba(0,0,0,0.5)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: "rgba(185,28,28,0.85)", padding: "3px 10px", borderRadius: 4, letterSpacing: 1, textTransform: "uppercase" }}>
+                Vencida
+              </span>
+            </div>
+          )}
         </div>
         <div style={{ padding: "9px 11px 4px" }}>
           <div style={{ fontSize: 12, fontWeight: 500, lineHeight: 1.3, marginBottom: 3, color: product.sold ? "var(--text-3)" : "var(--text)", textDecoration: product.sold ? "line-through" : "none" }}>
@@ -1427,43 +1474,61 @@ function ProductMini({
         </div>
       </Link>
 
-      {/* Acciones — fila 1: editar + destacar + marcar vendido */}
+      {/* Acciones — fila 1 */}
       <div style={{ padding: "6px 11px 0", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <Link
-          href={`/editar/${product.id}`}
-          style={{ fontSize: 11, color: "var(--green)", fontWeight: 600, textDecoration: "none" }}
-        >
-          Editar
-        </Link>
-        {!product.sold && (
-          <Link
-            href={`/destacar/${product.id}`}
-            style={{
-              fontSize: 11, fontWeight: 600, textDecoration: "none",
-              color: product.featured ? "#d97706" : "var(--text-3)",
-            }}
-          >
-            {product.featured ? "⭐ Destacado" : "⭐ Destacar"}
-          </Link>
-        )}
-        <button
-          onClick={onToggleSold}
-          style={{ fontSize: 11, color: product.sold ? "var(--text-2)" : "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-        >
-          {product.sold ? "Activar" : "Marcar vendido"}
-        </button>
-        {isBusiness && !product.sold && onTogglePinned && (
-          <button
-            onClick={onTogglePinned}
-            title={product.pinned ? "Quitar de fijados" : "Fijar en tu página de negocio"}
-            style={{
-              fontSize: 11, fontWeight: product.pinned ? 700 : 400,
-              color: product.pinned ? "#d97706" : "var(--text-3)",
-              background: "none", border: "none", cursor: "pointer", padding: 0,
-            }}
-          >
-            {product.pinned ? "📌 Fijado" : "📌 Fijar"}
-          </button>
+        {/* Expiración */}
+        <ExpiryBadge days={days} />
+
+        {isExpired ? (
+          /* Publicación vencida: solo mostrar "Renovar" */
+          onRenew && (
+            <button
+              onClick={async () => { setRenewing(true); await onRenew(); setRenewing(false); }}
+              disabled={renewing}
+              style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: "var(--green)", border: "none", borderRadius: 4, padding: "3px 10px", cursor: renewing ? "default" : "pointer", opacity: renewing ? 0.7 : 1 }}
+            >
+              {renewing ? "..." : "↺ Renovar 60 días"}
+            </button>
+          )
+        ) : (
+          <>
+            <Link
+              href={`/editar/${product.id}`}
+              style={{ fontSize: 11, color: "var(--green)", fontWeight: 600, textDecoration: "none" }}
+            >
+              Editar
+            </Link>
+            {!product.sold && (
+              <Link
+                href={`/destacar/${product.id}`}
+                style={{
+                  fontSize: 11, fontWeight: 600, textDecoration: "none",
+                  color: product.featured ? "#d97706" : "var(--text-3)",
+                }}
+              >
+                {product.featured ? "⭐ Destacado" : "⭐ Destacar"}
+              </Link>
+            )}
+            <button
+              onClick={onToggleSold}
+              style={{ fontSize: 11, color: product.sold ? "var(--text-2)" : "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+            >
+              {product.sold ? "Activar" : "Marcar vendido"}
+            </button>
+            {isBusiness && !product.sold && onTogglePinned && (
+              <button
+                onClick={onTogglePinned}
+                title={product.pinned ? "Quitar de fijados" : "Fijar en tu página de negocio"}
+                style={{
+                  fontSize: 11, fontWeight: product.pinned ? 700 : 400,
+                  color: product.pinned ? "#d97706" : "var(--text-3)",
+                  background: "none", border: "none", cursor: "pointer", padding: 0,
+                }}
+              >
+                {product.pinned ? "📌 Fijado" : "📌 Fijar"}
+              </button>
+            )}
+          </>
         )}
       </div>
 

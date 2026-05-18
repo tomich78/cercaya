@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { action, userId, productId } = body;
+  const { action, userId, productId, precios } = body;
 
   try {
     switch (action) {
@@ -68,6 +68,69 @@ export async function POST(req: NextRequest) {
       case "delete_user":
         await supabaseAdmin.auth.admin.deleteUser(userId);
         return NextResponse.json({ ok: true });
+
+      // ── Códigos promocionales ────────────────────────────────
+      case "create_promo_code": {
+        const p = (body.promoCode ?? {}) as {
+          code: string; note?: string; maxUses?: number | null;
+          durationDays?: number; expiresAt?: string | null;
+        };
+        if (!p.code?.trim()) {
+          return NextResponse.json({ error: "Falta el código" }, { status: 400 });
+        }
+        const { error } = await supabaseAdmin.from("promo_codes").insert({
+          code:          p.code.trim().toUpperCase(),
+          note:          p.note?.trim() || null,
+          max_uses:      p.maxUses ?? null,
+          duration_days: p.durationDays ?? 30,
+          expires_at:    p.expiresAt   || null,
+          type:          "negocio_mes",
+          uses:          0,
+          active:        true,
+        });
+        if (error) {
+          if (error.code === "23505") {
+            return NextResponse.json({ error: "Ese código ya existe" }, { status: 409 });
+          }
+          throw error;
+        }
+        return NextResponse.json({ ok: true });
+      }
+
+      case "deactivate_promo_code": {
+        await supabaseAdmin
+          .from("promo_codes")
+          .update({ active: false })
+          .eq("code", body.code);
+        return NextResponse.json({ ok: true });
+      }
+
+      case "reactivate_promo_code": {
+        await supabaseAdmin
+          .from("promo_codes")
+          .update({ active: true })
+          .eq("code", body.code);
+        return NextResponse.json({ ok: true });
+      }
+
+      case "delete_promo_code": {
+        await supabaseAdmin.from("promo_code_uses").delete().eq("code", body.code);
+        await supabaseAdmin.from("promo_codes").delete().eq("code", body.code);
+        return NextResponse.json({ ok: true });
+      }
+
+      // ── Precios ───────────────────────────────────────────────
+      case "update_precios": {
+        const entries = Object.entries(precios as Record<string, number>);
+        await Promise.all(
+          entries.map(([key, value]) =>
+            supabaseAdmin
+              .from("app_config")
+              .upsert({ key, value: String(value), updated_at: new Date().toISOString() })
+          )
+        );
+        return NextResponse.json({ ok: true });
+      }
 
       default:
         return NextResponse.json({ error: "Acción desconocida" }, { status: 400 });

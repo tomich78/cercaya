@@ -3,6 +3,7 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
+import GoogleButton from "../components/GoogleButton";
 import { login } from "../lib/auth";
 
 function inputStyle(hasError: boolean): React.CSSProperties {
@@ -86,6 +87,16 @@ function LoginForm() {
             </div>
           )}
 
+          {/* Google */}
+          <GoogleButton redirect={redirect} />
+
+          {/* Divisor */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "4px 0" }}>
+            <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+            <span style={{ fontSize: 12, color: "var(--text-3)" }}>o</span>
+            <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+          </div>
+
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div>
               <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 5 }}>
@@ -115,6 +126,11 @@ function LoginForm() {
                 style={inputStyle(!!errors.password)}
               />
               {errors.password && <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4 }}>{errors.password}</div>}
+              <div style={{ textAlign: "right", marginTop: 5 }}>
+                <Link href="/recuperar-contrasena" style={{ fontSize: 12, color: "var(--text-3)" }}>
+                  ¿Olvidaste tu contraseña?
+                </Link>
+              </div>
             </div>
 
             <button

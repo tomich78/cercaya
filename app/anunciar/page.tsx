@@ -7,7 +7,7 @@ import BotonPago from "../components/BotonPago";
 import { usePageTitle } from "../lib/usePageTitle";
 import { getCurrentUser, type LocalUser } from "../lib/auth";
 import { getLocalProducts, type LocalProduct } from "../lib/storage";
-import { PRECIOS } from "../lib/pagos";
+import { PRECIOS, getPreciosDB, type Precios } from "../lib/pagos";
 import { STATS, HOW_IT_WORKS } from "./data";
 
 export default function AnunciarPage() {
@@ -17,12 +17,21 @@ export default function AnunciarPage() {
   const [user,     setUser]     = useState<LocalUser | null>(null);
   const [products, setProducts] = useState<LocalProduct[]>([]);
   const [loading,  setLoading]  = useState(true);
+  const [precios,  setPrecios]  = useState<Precios>({ ...PRECIOS });
 
   // Para el selector de producto en "Destacado"
   const [selectedProduct, setSelectedProduct] = useState<number | null>(null);
   const [showPicker,      setShowPicker]       = useState(false);
 
+  // Código promocional
+  const [showPromo,    setShowPromo]    = useState(false);
+  const [promoInput,   setPromoInput]   = useState("");
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoError,   setPromoError]   = useState("");
+  const [promoSuccess, setPromoSuccess] = useState("");
+
   useEffect(() => {
+    getPreciosDB().then(setPrecios);
     (async () => {
       const u = await getCurrentUser();
       setUser(u);
@@ -33,6 +42,37 @@ export default function AnunciarPage() {
       setLoading(false);
     })();
   }, []);
+
+  async function handleApplyPromo() {
+    const code = promoInput.trim().toUpperCase();
+    if (!code) return;
+    if (!user) { router.push("/login?redirect=/anunciar"); return; }
+    setPromoLoading(true);
+    setPromoError("");
+    setPromoSuccess("");
+    try {
+      const { supabase: sb } = await import("../lib/supabase");
+      const { data: { session } } = await sb.auth.getSession();
+      const res = await fetch("/api/promo", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ code, userId: user.id }),
+      });
+      const json = await res.json() as Record<string, unknown>;
+      if (!res.ok) {
+        setPromoError((json.error as string) ?? "Código inválido");
+      } else {
+        setPromoSuccess((json.message as string) ?? "¡Código activado!");
+        setPromoInput("");
+      }
+    } catch {
+      setPromoError("Error de conexión. Intentá de nuevo.");
+    }
+    setPromoLoading(false);
+  }
 
   return (
     <div>
@@ -107,6 +147,8 @@ export default function AnunciarPage() {
               color="#d97706"
               bgColor="#fef3c7"
               borderColor="#f59e0b"
+              priceDisplay={`$${precios.destacar_7.toLocaleString("es-AR")}`}
+              period="por 7 días"
               features={[
                 "Posición preferencial en el feed",
                 "Badge ⭐ en la tarjeta",
@@ -164,7 +206,7 @@ export default function AnunciarPage() {
                         productId={selectedProduct}
                         label="Destacar 7 días"
                         descripcion="Pago único"
-                        precio={PRECIOS.destacar_7}
+                        precio={precios.destacar_7}
                         style={{ background: "linear-gradient(90deg,#f59e0b,#d97706)", fontSize: "12px" } as React.CSSProperties}
                       />
                       <BotonPago
@@ -173,7 +215,7 @@ export default function AnunciarPage() {
                         productId={selectedProduct}
                         label="Destacar 30 días"
                         descripcion="Mejor valor"
-                        precio={PRECIOS.destacar_30}
+                        precio={precios.destacar_30}
                         style={{ background: "linear-gradient(90deg,#b45309,#92400e)", fontSize: "12px" } as React.CSSProperties}
                       />
                     </div>
@@ -194,6 +236,8 @@ export default function AnunciarPage() {
               color="var(--green)"
               bgColor="var(--green-subtle)"
               borderColor="var(--green)"
+              priceDisplay={`$${precios.negocio_mes.toLocaleString("es-AR")}`}
+              period="por mes"
               features={[
                 "Nombre de negocio en tus publicaciones",
                 "Badge «Negocio» o «✓ Verificado»",
@@ -219,7 +263,7 @@ export default function AnunciarPage() {
                   userId={user.id}
                   label="Activar Modo Negocio"
                   descripcion="1 mes · Renovable"
-                  precio={PRECIOS.negocio_mes}
+                  precio={precios.negocio_mes}
                 />
               )}
             </PlanCard>
@@ -233,6 +277,8 @@ export default function AnunciarPage() {
               color="#7c3aed"
               bgColor="#ede9fe"
               borderColor="#7c3aed"
+              priceDisplay={`$${precios.banner_7.toLocaleString("es-AR")}`}
+              period="por 7 días"
               features={[
                 "Slots en el feed cada 4 productos",
                 "Segmentación por ciudad o barrio",
@@ -253,13 +299,91 @@ export default function AnunciarPage() {
                   userId={user.id}
                   label="Publicar banner 7 días"
                   descripcion="Pago único · Activo de inmediato"
-                  precio={PRECIOS.banner_7}
+                  precio={precios.banner_7}
                   style={{ background: "linear-gradient(90deg,#7c3aed,#6d28d9)" } as React.CSSProperties}
                 />
               )}
             </PlanCard>
 
           </div>
+        </div>
+
+        {/* ── Código promocional ── */}
+        <div style={{ textAlign: "center", marginBottom: 48, marginTop: -24 }}>
+          {!showPromo && !promoSuccess ? (
+            <button
+              onClick={() => setShowPromo(true)}
+              style={{
+                background: "none", border: "none", cursor: "pointer",
+                fontSize: 13, color: "var(--text-3)",
+                textDecoration: "underline", textDecorationStyle: "dotted" as const,
+              }}
+            >
+              🎟️ ¿Tenés un código promocional?
+            </button>
+          ) : promoSuccess ? (
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: 10,
+              background: "var(--green-subtle)", border: "1px solid #c5e8dc",
+              borderRadius: 10, padding: "14px 20px",
+            }}>
+              <span style={{ fontSize: 22 }}>🎉</span>
+              <div style={{ textAlign: "left" as const }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--green)" }}>{promoSuccess}</div>
+                <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 3 }}>
+                  Ya podés configurar tu perfil de negocio en{" "}
+                  <Link href="/perfil" style={{ color: "var(--green)", fontWeight: 600 }}>Mi perfil →</Link>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: "inline-block", textAlign: "left" as const }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 8, textAlign: "center" as const }}>
+                Ingresá tu código
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input
+                  value={promoInput}
+                  onChange={e => {
+                    setPromoInput(e.target.value.toUpperCase().replace(/\s/g, ""));
+                    setPromoError("");
+                  }}
+                  onKeyDown={e => e.key === "Enter" && handleApplyPromo()}
+                  placeholder="Ej: CERCAYA30"
+                  maxLength={20}
+                  style={{
+                    padding: "9px 14px", border: `1px solid ${promoError ? "#dc2626" : "var(--border)"}`,
+                    borderRadius: 6, fontSize: 14, fontWeight: 600,
+                    fontFamily: "monospace", letterSpacing: 1,
+                    background: "var(--bg)", color: "var(--text)",
+                    outline: "none", width: 200,
+                  }}
+                />
+                <button
+                  onClick={handleApplyPromo}
+                  disabled={promoLoading || !promoInput.trim()}
+                  style={{
+                    padding: "9px 18px", borderRadius: 6, border: "none",
+                    background: promoLoading || !promoInput.trim() ? "var(--border)" : "var(--green)",
+                    color: promoLoading || !promoInput.trim() ? "var(--text-3)" : "#fff",
+                    fontSize: 13, fontWeight: 600,
+                    cursor: promoLoading || !promoInput.trim() ? "default" : "pointer",
+                  }}
+                >
+                  {promoLoading ? "Verificando..." : "Aplicar"}
+                </button>
+                <button
+                  onClick={() => { setShowPromo(false); setPromoInput(""); setPromoError(""); }}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: 18, lineHeight: 1 }}
+                >×</button>
+              </div>
+              {promoError && (
+                <div style={{ fontSize: 12, color: "#dc2626", marginTop: 6, display: "flex", alignItems: "center", gap: 5 }}>
+                  ⚠️ {promoError}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ── Cómo funciona ── */}
@@ -296,15 +420,18 @@ interface PlanCardProps {
   borderColor: string;
   features: string[];
   children: React.ReactNode;
+  priceDisplay?: string;
+  period?: string;
 }
 
-function PlanCard({ badge, badgeColor, icon, name, color, bgColor, borderColor, features, children }: PlanCardProps) {
-  const priceMap: Record<string, { price: string; period: string; desc: string }> = {
-    "Destacado":     { price: `$${(2500).toLocaleString("es-AR")}`, period: "por 7 días", desc: "Hacé que tu publicación aparezca primero en el feed con badge especial." },
-    "Negocio Pro":   { price: `$${(5000).toLocaleString("es-AR")}`, period: "por mes",    desc: "Perfil de negocio completo con nombre, categoría, horarios y verificación CUIT." },
-    "Banner Premium":{ price: `$${(8000).toLocaleString("es-AR")}`, period: "por 7 días", desc: "Slots publicitarios integrados en el feed, con segmentación por zona y categoría." },
-  };
-  const info = priceMap[name];
+const PLAN_DESC: Record<string, string> = {
+  "Destacado":      "Hacé que tu publicación aparezca primero en el feed con badge especial.",
+  "Negocio Pro":    "Perfil de negocio completo con nombre, categoría, horarios y verificación CUIT.",
+  "Banner Premium": "Slots publicitarios integrados en el feed, con segmentación por zona y categoría.",
+};
+
+function PlanCard({ badge, badgeColor, icon, name, color, bgColor, borderColor, features, children, priceDisplay, period }: PlanCardProps) {
+  const desc = PLAN_DESC[name] ?? "";
 
   return (
     <div style={{
@@ -324,9 +451,9 @@ function PlanCard({ badge, badgeColor, icon, name, color, bgColor, borderColor, 
           <span style={{ fontSize: 16 }}>{icon}</span>
           <span style={{ fontSize: 12, fontWeight: 700, color }}>{name}</span>
         </div>
-        <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: -0.5, marginBottom: 2 }}>{info?.price}</div>
-        <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 12 }}>{info?.period}</div>
-        <p style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.6, margin: "0 0 16px" }}>{info?.desc}</p>
+        <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: -0.5, marginBottom: 2 }}>{priceDisplay ?? "—"}</div>
+        <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 12 }}>{period}</div>
+        <p style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.6, margin: "0 0 16px" }}>{desc}</p>
         <ul style={{ listStyle: "none", padding: 0, margin: "0 0 20px", display: "flex", flexDirection: "column", gap: 7 }}>
           {features.map(f => (
             <li key={f} style={{ display: "flex", alignItems: "flex-start", gap: 7, fontSize: 13, color: "var(--text-2)" }}>

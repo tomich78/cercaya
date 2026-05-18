@@ -347,6 +347,138 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
               </p>
             </div>
 
+            {/* Panel de atributos específicos por tipo */}
+            {displayed.listingType && displayed.listingType !== "product" && displayed.attributes && Object.keys(displayed.attributes).length > 0 && (
+              <div style={{ borderTop: "1px solid var(--border)", paddingTop: 18, marginBottom: 18 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase" as const, letterSpacing: 0.3, marginBottom: 12 }}>
+                  {displayed.listingType === "service"  ? "Detalles del servicio" :
+                   displayed.listingType === "property" ? "Detalles del inmueble" :
+                   "Detalles del vehículo"}
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 16px" }}>
+                  {/* Servicio */}
+                  {displayed.listingType === "service" && (<>
+                    {displayed.attributes.modalidad && (
+                      <div>
+                        <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2, textTransform: "uppercase" as const, letterSpacing: 0.3 }}>Modalidad</div>
+                        <div style={{ fontSize: 13, fontWeight: 500 }}>
+                          {displayed.attributes.modalidad === "presencial" ? "📍 Presencial" :
+                           displayed.attributes.modalidad === "remoto"     ? "💻 Remoto" :
+                           "📍/💻 Presencial y remoto"}
+                        </div>
+                      </div>
+                    )}
+                    {displayed.attributes.precioTipo && (
+                      <div>
+                        <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2, textTransform: "uppercase" as const, letterSpacing: 0.3 }}>Precio por</div>
+                        <div style={{ fontSize: 13, fontWeight: 500, textTransform: "capitalize" as const }}>
+                          {displayed.attributes.precioTipo === "convenir" ? "A convenir" : displayed.attributes.precioTipo as string}
+                        </div>
+                      </div>
+                    )}
+                    {displayed.attributes.disponibilidad && (
+                      <div style={{ gridColumn: "1 / -1" }}>
+                        <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2, textTransform: "uppercase" as const, letterSpacing: 0.3 }}>Disponibilidad</div>
+                        <div style={{ fontSize: 13, fontWeight: 500 }}>{displayed.attributes.disponibilidad as string}</div>
+                      </div>
+                    )}
+                  </>)}
+                  {/* Inmueble */}
+                  {displayed.listingType === "property" && (<>
+                    {displayed.attributes.operacion && (
+                      <div>
+                        <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2, textTransform: "uppercase" as const, letterSpacing: 0.3 }}>Operación</div>
+                        <div style={{ fontSize: 13, fontWeight: 500, textTransform: "capitalize" as const }}>
+                          {displayed.attributes.operacion === "alquiler_temp" ? "Alquiler temporal" : displayed.attributes.operacion as string}
+                        </div>
+                      </div>
+                    )}
+                    {displayed.attributes.superficie && (
+                      <div>
+                        <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2, textTransform: "uppercase" as const, letterSpacing: 0.3 }}>Superficie</div>
+                        <div style={{ fontSize: 13, fontWeight: 500 }}>{displayed.attributes.superficie as string} m²</div>
+                      </div>
+                    )}
+                    {displayed.attributes.ambientes && (
+                      <div>
+                        <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2, textTransform: "uppercase" as const, letterSpacing: 0.3 }}>Ambientes</div>
+                        <div style={{ fontSize: 13, fontWeight: 500 }}>{displayed.attributes.ambientes as string}</div>
+                      </div>
+                    )}
+                    {displayed.attributes.dormitorios && (
+                      <div>
+                        <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2, textTransform: "uppercase" as const, letterSpacing: 0.3 }}>Dormitorios</div>
+                        <div style={{ fontSize: 13, fontWeight: 500 }}>{displayed.attributes.dormitorios as string}</div>
+                      </div>
+                    )}
+                    {displayed.attributes.banos && (
+                      <div>
+                        <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2, textTransform: "uppercase" as const, letterSpacing: 0.3 }}>Baños</div>
+                        <div style={{ fontSize: 13, fontWeight: 500 }}>{displayed.attributes.banos as string}</div>
+                      </div>
+                    )}
+                    {displayed.attributes.expensas && (
+                      <div>
+                        <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2, textTransform: "uppercase" as const, letterSpacing: 0.3 }}>Expensas</div>
+                        <div style={{ fontSize: 13, fontWeight: 500 }}>${displayed.attributes.expensas as string}/mes</div>
+                      </div>
+                    )}
+                    {displayed.attributes.garaje && (
+                      <div>
+                        <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2, textTransform: "uppercase" as const, letterSpacing: 0.3 }}>Garaje</div>
+                        <div style={{ fontSize: 13, fontWeight: 500 }}>✅ Incluye garaje</div>
+                      </div>
+                    )}
+                  </>)}
+                  {/* Vehículo */}
+                  {displayed.listingType === "vehicle" && (<>
+                    {displayed.attributes.marca && (
+                      <div>
+                        <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2, textTransform: "uppercase" as const, letterSpacing: 0.3 }}>Marca</div>
+                        <div style={{ fontSize: 13, fontWeight: 500 }}>{displayed.attributes.marca as string}</div>
+                      </div>
+                    )}
+                    {displayed.attributes.modelo && (
+                      <div>
+                        <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2, textTransform: "uppercase" as const, letterSpacing: 0.3 }}>Modelo</div>
+                        <div style={{ fontSize: 13, fontWeight: 500 }}>{displayed.attributes.modelo as string}</div>
+                      </div>
+                    )}
+                    {displayed.attributes.anio && (
+                      <div>
+                        <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2, textTransform: "uppercase" as const, letterSpacing: 0.3 }}>Año</div>
+                        <div style={{ fontSize: 13, fontWeight: 500 }}>{displayed.attributes.anio as string}</div>
+                      </div>
+                    )}
+                    {displayed.attributes.km && (
+                      <div>
+                        <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2, textTransform: "uppercase" as const, letterSpacing: 0.3 }}>Kilómetros</div>
+                        <div style={{ fontSize: 13, fontWeight: 500 }}>{Number(displayed.attributes.km).toLocaleString("es-AR")} km</div>
+                      </div>
+                    )}
+                    {displayed.attributes.combustible && (
+                      <div>
+                        <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2, textTransform: "uppercase" as const, letterSpacing: 0.3 }}>Combustible</div>
+                        <div style={{ fontSize: 13, fontWeight: 500, textTransform: "capitalize" as const }}>{displayed.attributes.combustible as string}</div>
+                      </div>
+                    )}
+                    {displayed.attributes.transmision && (
+                      <div>
+                        <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2, textTransform: "uppercase" as const, letterSpacing: 0.3 }}>Transmisión</div>
+                        <div style={{ fontSize: 13, fontWeight: 500, textTransform: "capitalize" as const }}>{displayed.attributes.transmision as string}</div>
+                      </div>
+                    )}
+                    {displayed.attributes.color && (
+                      <div>
+                        <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 2, textTransform: "uppercase" as const, letterSpacing: 0.3 }}>Color</div>
+                        <div style={{ fontSize: 13, fontWeight: 500, textTransform: "capitalize" as const }}>{displayed.attributes.color as string}</div>
+                      </div>
+                    )}
+                  </>)}
+                </div>
+              </div>
+            )}
+
             <div style={{ borderTop: "1px solid var(--border)", paddingTop: 18 }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase" as const, letterSpacing: 0.3, marginBottom: 12 }}>
                 Entrega

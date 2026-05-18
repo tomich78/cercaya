@@ -6,7 +6,11 @@ import Link from "next/link";
 import Navbar from "../components/Navbar";
 import { saveLocalProduct, uploadProductImages } from "../lib/storage";
 import { getCurrentUser, type LocalUser } from "../lib/auth";
-import { categories } from "../data";
+import {
+  LISTING_TYPES, PRODUCT_CATEGORIES, SERVICE_CATEGORIES,
+  PROPERTY_TYPES, VEHICLE_TYPES, categoryEmojis, categoryColors,
+  type ListingType,
+} from "../data";
 import { useToast } from "../components/ToastProvider";
 import LocationInput from "../components/LocationInput";
 import { usePageTitle } from "../lib/usePageTitle";
@@ -15,93 +19,31 @@ import ExcelUpload from "./ExcelUpload";
 const MAX_IMAGES = 5;
 const MAX_DESC   = 800;
 
-const categoryTips: Record<string, string> = {
-  "Electrónica":  "💡 Incluí modelo, número de serie y si tiene cargador o accesorios originales.",
-  "Ropa":         "💡 Especificá el talle, la marca y si el precio es negociable.",
-  "Hogar":        "💡 Indicá las medidas del objeto y si hacés envíos o solo retiro.",
-  "Arte":         "💡 Contá la técnica, las medidas y si incluye marco o certificado de autenticidad.",
-  "Deportes":     "💡 Describí el estado de uso real y si viene con accesorios incluidos.",
-  "Vehículos":    "💡 Incluí año, kilometraje y si tiene toda la documentación al día.",
-  "Herramientas": "💡 Indicá la marca, el voltaje si aplica y el estado general de uso.",
-  "Juguetes":     "💡 Especificá la edad recomendada, si están completos y sin piezas faltantes.",
-  "Libros":       "💡 Incluí autor, editorial, año y si tiene subrayados o anotaciones.",
-  "Mascotas":     "💡 Indicá para qué tipo de mascota son los accesorios y el estado.",
-  "Bebés":          "💡 Especificá el rango de edad, las medidas y si tiene desgaste visible.",
-  "Jardín":         "💡 Indicá si la planta está en maceta o es de exterior y su tamaño actual.",
-  "Comida y bebida":"💡 Indicá el precio por unidad o porción, los ingredientes principales y si hacés delivery o solo retiro.",
-  "Farmacia":       "💡 Verificá que el producto no requiera receta para su venta libre y especificá la cantidad.",
-  "Kiosco":         "💡 Indicá precio por unidad o combo y si tenés stock disponible en el momento.",
-  "Ferretería":     "💡 Especificá marca, medidas o voltaje si aplica, y cantidad disponible en stock.",
-  "Servicios":      "💡 Describí qué incluye el servicio, el tiempo estimado y si cobrás por hora o por trabajo.",
-};
-
-const categoryColors: Record<string, string> = {
-  "Electrónica":    "#dbeafe",
-  "Ropa":           "#fce7f3",
-  "Hogar":          "#d1fae5",
-  "Arte":           "#fef3c7",
-  "Deportes":       "#e0f2fe",
-  "Vehículos":      "#f3e8ff",
-  "Herramientas":   "#fed7aa",
-  "Juguetes":       "#fde68a",
-  "Libros":         "#c7d2fe",
-  "Mascotas":       "#fecdd3",
-  "Bebés":          "#bae6fd",
-  "Jardín":         "#bbf7d0",
-  "Comida y bebida":"#fef9c3",
-  "Farmacia":       "#dcfce7",
-  "Kiosco":         "#fde8d8",
-  "Ferretería":     "#e2e8f0",
-  "Servicios":      "#ede9fe",
-};
-
-const categoryEmojis: Record<string, string[]> = {
-  "Electrónica":   ["💻", "📱", "🖥️", "⌨️", "🖱️", "🎧", "📷", "🎮", "📺", "🔋"],
-  "Ropa":          ["👗", "👟", "👔", "🧥", "👜", "🕶️", "👒", "🧣", "👞", "🧤"],
-  "Hogar":         ["🛋️", "🪑", "🛏️", "🪴", "🍳", "🪞", "🛁", "🖼️", "💡", "🧹"],
-  "Arte":          ["🎨", "📚", "🎵", "🎸", "🎹", "📷", "✏️", "🎭", "🎬", "🧵"],
-  "Deportes":      ["🚲", "⚽", "🎾", "🏋️", "🛹", "🏊", "⛷️", "🥊", "🎯", "🏄"],
-  "Vehículos":     ["🚗", "🏍️", "🚐", "🚚", "🛵", "🚙", "🏎️", "🚕", "🛻", "🚌"],
-  "Herramientas":  ["🔧", "🪛", "🔨", "🪚", "🔩", "⚙️", "🪝", "🔑", "🗜️", "🔌"],
-  "Juguetes":      ["🧸", "🎮", "🎲", "🪆", "🎯", "🪀", "🧩", "🎠", "🪁", "🎪"],
-  "Libros":        ["📚", "📖", "📕", "📗", "📘", "📙", "📜", "📰", "🗒️", "✏️"],
-  "Mascotas":      ["🐶", "🐱", "🐠", "🐦", "🐹", "🦜", "🐰", "🐢", "🐾", "🦮"],
-  "Bebés":         ["👶", "🍼", "🧸", "🪆", "🛒", "🧷", "🎠", "🪃", "🧦", "👕"],
-  "Jardín":        ["🌱", "🌸", "🪴", "🌻", "🌿", "🍃", "🌾", "🌺", "🌷", "🪻"],
-  "Comida y bebida":["🍕", "🍔", "🥗", "🍣", "🥐", "🍰", "☕", "🧃", "🍱", "🥙"],
-  "Farmacia":      ["💊", "🩺", "🩹", "🧴", "🧪", "💉", "🩻", "🫀", "🧬", "🩼"],
-  "Kiosco":        ["🍬", "🍫", "🧁", "🥤", "🍿", "🪄", "📦", "🛒", "🍭", "🎁"],
-  "Ferretería":    ["🔨", "🪚", "🔧", "🪛", "🔩", "🪤", "🧲", "🔌", "💡", "🪜"],
-  "Servicios":     ["🛠️", "🧹", "🚿", "⚡", "🌐", "📦", "🔐", "📋", "🪟", "🚗"],
-};
-
+/* ── helpers ──────────────────────────────────────────────────── */
 function formatPrice(raw: string): string {
   if (!raw) return "";
   return "$" + Number(raw).toLocaleString("es-AR");
 }
 
-function inputStyle(hasError: boolean): React.CSSProperties {
+function inputStyle(hasError = false): React.CSSProperties {
   return {
-    width: "100%",
-    padding: "8px 10px",
-    border: `1px solid ${hasError ? "#dc2626" : "var(--border)"}`,
-    borderRadius: 6,
-    fontSize: 13,
-    color: "var(--text)",
-    background: "var(--bg)",
-    outline: "none",
-    fontFamily: "inherit",
+    width: "100%", padding: "8px 10px",
+    border: `1px solid ${hasError ? "var(--red)" : "var(--border)"}`,
+    borderRadius: 6, fontSize: 13,
+    color: "var(--text)", background: "var(--bg)",
+    outline: "none", fontFamily: "inherit",
   };
 }
 
-function Field({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
+function Field({ label, hint, error, children }: { label: string; hint?: string; error?: string; children: ReactNode }) {
   return (
     <div style={{ marginBottom: 14 }}>
       <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 5 }}>
         {label}
       </label>
       {children}
-      {error && <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4 }}>{error}</div>}
+      {hint  && !error && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>{hint}</div>}
+      {error && <div style={{ fontSize: 12, color: "var(--red)", marginTop: 4 }}>{error}</div>}
     </div>
   );
 }
@@ -117,120 +59,244 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
+function ToggleButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button onClick={onClick} style={{
+      padding: "6px 14px", borderRadius: 6, fontSize: 13, border: "1px solid",
+      borderColor: active ? "var(--green)" : "var(--border)",
+      background:  active ? "var(--green-subtle)" : "var(--surface)",
+      color:       active ? "var(--green)" : "var(--text-2)",
+      fontWeight:  active ? 600 : 400, cursor: "pointer",
+    }}>{children}</button>
+  );
+}
+
+/* ── Selector de tipo ─────────────────────────────────────────── */
+function TypeSelector({ onSelect }: { onSelect: (t: ListingType) => void }) {
+  return (
+    <div>
+      <h1 style={{ fontSize: 19, fontWeight: 700, letterSpacing: -0.5, marginBottom: 6 }}>
+        ¿Qué querés publicar?
+      </h1>
+      <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 24 }}>
+        Elegí el tipo de publicación para ver los campos correspondientes.
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+        {LISTING_TYPES.map(t => (
+          <button
+            key={t.value}
+            onClick={() => onSelect(t.value)}
+            style={{
+              background: "var(--surface)", border: "1px solid var(--border)",
+              borderRadius: 10, padding: "20px 18px", cursor: "pointer",
+              textAlign: "left", transition: "border-color 0.12s, box-shadow 0.12s",
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--green)";
+              (e.currentTarget as HTMLButtonElement).style.boxShadow  = "0 0 0 3px var(--green-subtle)";
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border)";
+              (e.currentTarget as HTMLButtonElement).style.boxShadow  = "none";
+            }}
+          >
+            <div style={{ fontSize: 32, marginBottom: 10 }}>{t.emoji}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4, letterSpacing: -0.3 }}>{t.label}</div>
+            <div style={{ fontSize: 12, color: "var(--text-3)", lineHeight: 1.5 }}>{t.desc}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Página principal ─────────────────────────────────────────── */
 export default function PublicarPage() {
-  usePageTitle("Publicar producto");
-  const router = useRouter();
-  const { toast } = useToast();
+  usePageTitle("Publicar");
+  const router     = useRouter();
+  const { toast }  = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [user, setUser]         = useState<LocalUser | null>(null);
-  const [checking, setChecking] = useState(true);
+  const [user,      setUser]      = useState<LocalUser | null>(null);
+  const [checking,  setChecking]  = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [mode, setMode]         = useState<"manual" | "excel">("manual");
+  const [mode,      setMode]      = useState<"manual" | "excel">("manual");
+  const [listingType, setListingType] = useState<ListingType | null>(null);
 
-  const [imageFiles, setImageFiles]     = useState<File[]>([]);
+  const [imageFiles,    setImageFiles]    = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-  const [locationLat, setLocationLat]   = useState<number | null>(null);
-  const [locationLng, setLocationLng]   = useState<number | null>(null);
+  const [locationLat,   setLocationLat]   = useState<number | null>(null);
+  const [locationLng,   setLocationLng]   = useState<number | null>(null);
 
+  // Campos comunes
   const [form, setForm] = useState({
-    title: "", priceRaw: "", category: "Electrónica",
-    emoji: "💻", description: "", location: "",
-    condition:  "Usado" as "Nuevo" | "Usado",
-    negotiable: false,
-    delivery:   "retiro" as "retiro" | "envio" | "ambos",
+    title:      "",
+    priceRaw:   "",
+    description:"",
+    location:   "",
     phone:      "",
+    negotiable: false,
+    // Producto
+    category:   "Electrónica",
+    emoji:      "💻",
+    condition:  "Usado" as "Nuevo" | "Usado",
+    delivery:   "retiro" as "retiro" | "envio" | "ambos",
     stock:      1,
+    // Servicio
+    serviceCategory: "Plomería",
+    modalidad:       "presencial" as "presencial" | "remoto" | "ambos",
+    precioTipo:      "trabajo" as "hora" | "trabajo" | "mes" | "convenir",
+    disponibilidad:  "",
+    // Inmueble
+    operacion:      "venta" as "venta" | "alquiler" | "alquiler_temp",
+    tipoPropiedad:  "Casa",
+    superficieM2:   "",
+    ambientes:      "",
+    dormitorios:    "",
+    banos:          "",
+    garaje:         false,
+    expensas:       "",
+    // Vehículo
+    tipoVehiculo:   "Auto",
+    marca:          "",
+    modelo:         "",
+    anio:           "",
+    km:             "",
+    combustible:    "nafta" as "nafta" | "diesel" | "electrico" | "gnc" | "hibrido",
+    transmision:    "manual" as "manual" | "automatica",
+    color:          "",
   });
+
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     getCurrentUser().then(u => {
       if (!u) { router.replace("/login?redirect=/publicar"); return; }
-      setUser(u);
-      setChecking(false);
+      setUser(u); setChecking(false);
     });
   }, [router]);
 
-  // Liberar object URLs al desmontar
   useEffect(() => {
     return () => { imagePreviews.forEach(url => URL.revokeObjectURL(url)); };
   }, [imagePreviews]);
 
-  const bg           = categoryColors[form.category] ?? "#f5f5f3";
-  const emojis       = categoryEmojis[form.category] ?? [];
-  const priceDisplay = formatPrice(form.priceRaw);
-
-  function setField(field: string, value: string) {
+  function setField(field: string, value: unknown) {
     setForm(f => ({ ...f, [field]: value }));
     if (errors[field]) setErrors(e => ({ ...e, [field]: "" }));
   }
 
-  function handleCategoryChange(cat: string) {
-    setForm(f => ({ ...f, category: cat, emoji: categoryEmojis[cat]?.[0] ?? "📦" }));
-  }
-
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const selected = Array.from(e.target.files ?? []);
+    const selected  = Array.from(e.target.files ?? []);
     if (!selected.length) return;
-
-    const remaining = MAX_IMAGES - imageFiles.length;
-    const toAdd = selected.slice(0, remaining);
-
-    const newPreviews = toAdd.map(f => URL.createObjectURL(f));
+    const toAdd     = selected.slice(0, MAX_IMAGES - imageFiles.length);
     setImageFiles(prev => [...prev, ...toAdd]);
-    setImagePreviews(prev => [...prev, ...newPreviews]);
-
-    // Reset input para permitir re-seleccionar el mismo archivo
+    setImagePreviews(prev => [...prev, ...toAdd.map(f => URL.createObjectURL(f))]);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   function removeImage(index: number) {
     URL.revokeObjectURL(imagePreviews[index]);
-    setImageFiles(prev => prev.filter((_, i) => i !== index));
+    setImageFiles(prev    => prev.filter((_, i) => i !== index));
     setImagePreviews(prev => prev.filter((_, i) => i !== index));
   }
+
+  // Precio display según tipo
+  const priceDisplay = (() => {
+    if (!form.priceRaw) return "";
+    if (listingType === "service") {
+      if (form.precioTipo === "convenir") return "A convenir";
+      const labels = { hora: "/hora", trabajo: " por trabajo", mes: "/mes" };
+      return formatPrice(form.priceRaw) + (labels[form.precioTipo as keyof typeof labels] ?? "");
+    }
+    if (listingType === "property" && form.operacion !== "venta") {
+      return formatPrice(form.priceRaw) + "/mes";
+    }
+    return formatPrice(form.priceRaw);
+  })();
 
   function validate() {
     const e: Record<string, string> = {};
     if (!form.title.trim())       e.title       = "Obligatorio";
-    if (!form.priceRaw)           e.priceRaw    = "Obligatorio";
     if (!form.description.trim()) e.description = "Obligatorio";
     if (!form.location.trim())    e.location    = "Obligatorio";
+    if (listingType !== "service" || form.precioTipo !== "convenir") {
+      if (!form.priceRaw) e.priceRaw = "Obligatorio";
+    }
+    if (listingType === "vehicle") {
+      if (!form.marca.trim())  e.marca  = "Obligatorio";
+      if (!form.modelo.trim()) e.modelo = "Obligatorio";
+      if (!form.anio)          e.anio   = "Obligatorio";
+    }
     return e;
   }
 
   async function handleSubmit() {
     const e = validate();
     if (Object.keys(e).length > 0) { setErrors(e); return; }
-
     setUploading(true);
     try {
-      // Subir imágenes a Supabase Storage
       let imageUrls: string[] = [];
       if (imageFiles.length > 0) {
         imageUrls = await uploadProductImages(user!.id, imageFiles);
       }
 
+      // Determinar categoría y emoji según tipo
+      const category = listingType === "service"  ? form.serviceCategory
+        : listingType === "property" ? form.tipoPropiedad
+        : listingType === "vehicle"  ? form.tipoVehiculo
+        : form.category;
+
+      const emoji = categoryEmojis[category]?.[0] ?? form.emoji;
+      const bg    = categoryColors[category] ?? "#f5f5f3";
+
+      // Atributos específicos por tipo
+      const attributes: Record<string, unknown> = {};
+      if (listingType === "service") {
+        attributes.modalidad    = form.modalidad;
+        attributes.precioTipo   = form.precioTipo;
+        if (form.disponibilidad) attributes.disponibilidad = form.disponibilidad;
+      } else if (listingType === "property") {
+        attributes.operacion    = form.operacion;
+        if (form.superficieM2)  attributes.superficieM2  = Number(form.superficieM2);
+        if (form.ambientes)     attributes.ambientes     = Number(form.ambientes);
+        if (form.dormitorios)   attributes.dormitorios   = Number(form.dormitorios);
+        if (form.banos)         attributes.banos         = Number(form.banos);
+        attributes.garaje       = form.garaje;
+        if (form.expensas)      attributes.expensas      = Number(form.expensas);
+      } else if (listingType === "vehicle") {
+        attributes.marca        = form.marca;
+        attributes.modelo       = form.modelo;
+        if (form.anio)  attributes.anio  = Number(form.anio);
+        if (form.km)    attributes.km    = Number(form.km);
+        attributes.combustible  = form.combustible;
+        attributes.transmision  = form.transmision;
+        if (form.color) attributes.color = form.color;
+      }
+
+      // Condición solo para productos
+      const condition = listingType === "product" ? form.condition : undefined;
+
       await saveLocalProduct({
         title:       form.title,
-        price:       priceDisplay,
-        category:    form.category,
-        emoji:       form.emoji,
+        price:       priceDisplay || formatPrice(form.priceRaw),
+        category,
+        emoji,
         description: form.description,
         location:    form.location,
-        condition:   form.condition,
+        condition,
         images:      imageUrls,
-        lat:         locationLat ?? undefined,
-        lng:         locationLng ?? undefined,
+        lat:         locationLat  ?? undefined,
+        lng:         locationLng  ?? undefined,
         distance:    "Cerca tuyo",
         bg,
         verified:    false,
         userId:      user!.id,
         negotiable:  form.negotiable,
-        delivery:    form.delivery,
+        delivery:    listingType === "product" ? form.delivery : "retiro",
         phone:       form.phone || undefined,
-        stock:       form.stock,
+        stock:       listingType === "product" ? form.stock : 1,
+        listingType: listingType ?? "product",
+        attributes,
       });
 
       toast("¡Publicación creada con éxito!");
@@ -243,456 +309,519 @@ export default function PublicarPage() {
 
   if (checking) return <div><Navbar /></div>;
 
-  const previewImage = imagePreviews[0] ?? null;
-
   return (
     <div>
       <Navbar />
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "2rem 1.5rem" }}>
+      <div style={{ maxWidth: listingType ? 900 : 560, margin: "0 auto", padding: "2rem 1.5rem" }}>
         <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, color: "var(--text-3)", marginBottom: 20 }}>
           ← Inicio
         </Link>
-        <h1 style={{ fontSize: 19, fontWeight: 700, marginBottom: 20, letterSpacing: -0.5 }}>
-          Nueva publicación
-        </h1>
 
-        {/* ── Toggle modo ── */}
-        <div style={{
-          display: "flex", background: "var(--surface)",
-          border: "1px solid var(--border)", borderRadius: 8,
-          padding: 4, marginBottom: 24,
-        }}>
-          {([
-            { value: "manual", label: "✏️  Publicación manual" },
-            { value: "excel",  label: "📊  Importar desde Excel" },
-          ] as const).map(opt => (
-            <button
-              key={opt.value}
-              onClick={() => setMode(opt.value)}
-              style={{
-                flex: 1, padding: "8px 12px", borderRadius: 6, fontSize: 13,
-                border: "none",
-                background: mode === opt.value ? "var(--green-subtle)" : "none",
-                color:      mode === opt.value ? "var(--green)" : "var(--text-3)",
-                fontWeight: mode === opt.value ? 600 : 400,
-                cursor: "pointer", transition: "all 0.12s",
-              }}
-            >{opt.label}</button>
-          ))}
-        </div>
-
-        {mode === "excel" ? (
-          <ExcelUpload userId={user!.id} onDone={() => router.push("/")} />
+        {/* ── Sin tipo elegido: selector ── */}
+        {!listingType ? (
+          <TypeSelector onSelect={setListingType} />
         ) : (
-        <div className="two-col-publish">
+          <>
+            {/* Header con tipo seleccionado */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+              <h1 style={{ fontSize: 19, fontWeight: 700, letterSpacing: -0.5, margin: 0 }}>
+                {LISTING_TYPES.find(t => t.value === listingType)?.emoji}{" "}
+                Nueva publicación — {LISTING_TYPES.find(t => t.value === listingType)?.label}
+              </h1>
+              <button
+                onClick={() => setListingType(null)}
+                style={{
+                  fontSize: 12, color: "var(--text-3)", background: "none",
+                  border: "1px solid var(--border)", borderRadius: 6,
+                  padding: "5px 12px", cursor: "pointer",
+                }}
+              >
+                ← Cambiar tipo
+              </button>
+            </div>
 
-          {/* Formulario */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-
-            {/* ── Fotos ── */}
-            <Section title={`Fotos (${imageFiles.length}/${MAX_IMAGES})`}>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                style={{ display: "none" }}
-                onChange={handleFileChange}
-              />
-
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {/* Miniaturas existentes */}
-                {imagePreviews.map((src, i) => (
-                  <div
-                    key={src}
+            {/* Toggle manual / excel (solo productos) */}
+            {listingType === "product" && (
+              <div style={{
+                display: "flex", background: "var(--surface)",
+                border: "1px solid var(--border)", borderRadius: 8,
+                padding: 4, marginBottom: 24,
+              }}>
+                {([
+                  { value: "manual", label: "✏️  Publicación manual" },
+                  { value: "excel",  label: "📊  Importar desde Excel" },
+                ] as const).map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setMode(opt.value)}
                     style={{
-                      position: "relative",
-                      width: 80, height: 80,
-                      borderRadius: 6,
-                      overflow: "hidden",
-                      border: i === 0 ? "2px solid var(--green)" : "1px solid var(--border)",
-                      flexShrink: 0,
+                      flex: 1, padding: "8px 12px", borderRadius: 6, fontSize: 13,
+                      border: "none",
+                      background: mode === opt.value ? "var(--green-subtle)" : "none",
+                      color:      mode === opt.value ? "var(--green)" : "var(--text-3)",
+                      fontWeight: mode === opt.value ? 600 : 400,
+                      cursor: "pointer", transition: "all 0.12s",
                     }}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={src}
-                      alt={`foto ${i + 1}`}
-                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                    />
-                    {i === 0 && (
+                  >{opt.label}</button>
+                ))}
+              </div>
+            )}
+
+            {listingType === "product" && mode === "excel" ? (
+              <ExcelUpload userId={user!.id} onDone={() => router.push("/")} />
+            ) : (
+              <div className="two-col-publish">
+
+                {/* ── Columna formulario ── */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+                  {/* Fotos */}
+                  <Section title={`Fotos (${imageFiles.length}/${MAX_IMAGES})`}>
+                    <input ref={fileInputRef} type="file" accept="image/*" multiple
+                      style={{ display: "none" }} onChange={handleFileChange} />
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {imagePreviews.map((src, i) => (
+                        <div key={src} style={{
+                          position: "relative", width: 80, height: 80, borderRadius: 6,
+                          overflow: "hidden",
+                          border: i === 0 ? "2px solid var(--green)" : "1px solid var(--border)",
+                          flexShrink: 0,
+                        }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={src} alt={`foto ${i+1}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                          {i === 0 && (
+                            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.45)", fontSize: 9, color: "#fff", textAlign: "center", padding: "2px 0", fontWeight: 600 }}>
+                              PRINCIPAL
+                            </div>
+                          )}
+                          <button onClick={() => removeImage(i)} style={{ position: "absolute", top: 3, right: 3, width: 18, height: 18, borderRadius: "50%", background: "rgba(0,0,0,0.55)", border: "none", color: "#fff", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>×</button>
+                        </div>
+                      ))}
+                      {imageFiles.length < MAX_IMAGES && (
+                        <button onClick={() => fileInputRef.current?.click()} style={{
+                          width: 80, height: 80, border: "1.5px dashed var(--border)",
+                          borderRadius: 6, background: "var(--bg)", cursor: "pointer",
+                          display: "flex", flexDirection: "column", alignItems: "center",
+                          justifyContent: "center", gap: 4, color: "var(--text-3)", flexShrink: 0,
+                        }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--green)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--green)"; }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--text-3)"; }}
+                        >
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                          </svg>
+                          <span style={{ fontSize: 10, fontWeight: 500 }}>{imageFiles.length === 0 ? "Agregar foto" : "Más"}</span>
+                        </button>
+                      )}
+                    </div>
+                    {imageFiles.length === 0 && <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 10 }}>Podés subir hasta {MAX_IMAGES} fotos. La primera será la principal.</div>}
+                  </Section>
+
+                  {/* Info básica */}
+                  <Section title="Información básica">
+                    <Field label="Título" error={errors.title}>
+                      <input value={form.title} onChange={e => setField("title", e.target.value)}
+                        placeholder={
+                          listingType === "service"  ? "Ej: Plomero a domicilio — zona sur" :
+                          listingType === "property" ? "Ej: Departamento 2 ambientes en Palermo" :
+                          listingType === "vehicle"  ? "Ej: Toyota Corolla 2020 automático" :
+                          "Ej: iPhone 13 128GB libre"
+                        }
+                        style={inputStyle(!!errors.title)} />
+                    </Field>
+
+                    {/* Precio */}
+                    {(listingType !== "service" || form.precioTipo !== "convenir") && (
+                      <Field label={
+                        listingType === "service"  ? `Precio (${form.precioTipo === "hora" ? "por hora" : form.precioTipo === "mes" ? "por mes" : "por trabajo"})` :
+                        listingType === "property" && form.operacion !== "venta" ? "Precio por mes" :
+                        "Precio"
+                      } error={errors.priceRaw}>
+                        <input value={form.priceRaw}
+                          onChange={e => setField("priceRaw", e.target.value.replace(/\D/g, ""))}
+                          placeholder="Ej: 80000" inputMode="numeric"
+                          style={inputStyle(!!errors.priceRaw)} />
+                        {form.priceRaw && (
+                          <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 4 }}>
+                            Se mostrará como <strong style={{ color: "var(--green)" }}>{priceDisplay}</strong>
+                          </div>
+                        )}
+                      </Field>
+                    )}
+
+                    <div style={{ marginBottom: 12 }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                        <input type="checkbox" checked={form.negotiable}
+                          onChange={e => setField("negotiable", e.target.checked)}
+                          style={{ width: 15, height: 15, accentColor: "var(--green)", cursor: "pointer", flexShrink: 0 }} />
+                        <span style={{ fontSize: 13, color: "var(--text-2)", userSelect: "none" }}>
+                          {listingType === "service" ? "Precio a convenir (sin monto fijo)" : "Precio negociable"}
+                        </span>
+                      </label>
+                    </div>
+                  </Section>
+
+                  {/* ── Campos específicos por tipo ── */}
+
+                  {/* PRODUCTO */}
+                  {listingType === "product" && (
+                    <Section title="Detalles del producto">
+                      {/* Categoría */}
+                      <div style={{ marginBottom: 14 }}>
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 7 }}>Categoría</label>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+                          {PRODUCT_CATEGORIES.filter(c => c !== "Todos").map(cat => (
+                            <button key={cat} onClick={() => { setField("category", cat); setField("emoji", categoryEmojis[cat]?.[0] ?? "📦"); }}
+                              style={{
+                                padding: "5px 12px", borderRadius: 999, fontSize: 12, border: "1px solid",
+                                borderColor: form.category === cat ? "var(--green)" : "var(--border)",
+                                background:  form.category === cat ? "var(--green-subtle)" : "var(--surface)",
+                                color:       form.category === cat ? "var(--green)" : "var(--text-2)",
+                                fontWeight:  form.category === cat ? 600 : 400, cursor: "pointer",
+                              }}
+                            >{cat}</button>
+                          ))}
+                        </div>
+                        {/* Emojis */}
+                        <div style={{ fontSize: 12, fontWeight: 500, color: "var(--text-2)", marginBottom: 6 }}>Elegí un ícono</div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                          {(categoryEmojis[form.category] ?? []).map(em => (
+                            <button key={em} onClick={() => setField("emoji", em)} style={{
+                              width: 38, height: 38, fontSize: 19, borderRadius: 6, border: "1px solid",
+                              borderColor: form.emoji === em ? "var(--green)" : "var(--border)",
+                              background:  form.emoji === em ? "var(--green-subtle)" : "var(--bg)",
+                              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                            }}>{em}</button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Condición */}
+                      <div style={{ marginBottom: 14 }}>
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 7 }}>Condición</label>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          {(["Nuevo", "Usado"] as const).map(c => (
+                            <ToggleButton key={c} active={form.condition === c} onClick={() => setField("condition", c)}>{c}</ToggleButton>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Stock */}
+                      <div style={{ marginBottom: 14 }}>
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 7 }}>Stock disponible</label>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <button onClick={() => setField("stock", Math.max(1, form.stock - 1))} style={{ width: 30, height: 30, borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", cursor: form.stock <= 1 ? "default" : "pointer", fontSize: 17, color: form.stock <= 1 ? "var(--border)" : "var(--text-2)", display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                          <span style={{ fontSize: 15, fontWeight: 700, minWidth: 28, textAlign: "center" }}>{form.stock}</span>
+                          <button onClick={() => setField("stock", Math.min(999, form.stock + 1))} style={{ width: 30, height: 30, borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", cursor: "pointer", fontSize: 17, color: "var(--text-2)", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                          <span style={{ fontSize: 12, color: "var(--text-3)" }}>{form.stock === 1 ? "unidad" : "unidades"}</span>
+                        </div>
+                      </div>
+
+                      {/* Entrega */}
+                      <div>
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 7 }}>Forma de entrega</label>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          {([
+                            { value: "retiro", label: "🤝 Retiro en persona" },
+                            { value: "envio",  label: "📦 Envío" },
+                            { value: "ambos",  label: "✅ Ambos" },
+                          ] as const).map(opt => (
+                            <ToggleButton key={opt.value} active={form.delivery === opt.value} onClick={() => setField("delivery", opt.value)}>{opt.label}</ToggleButton>
+                          ))}
+                        </div>
+                      </div>
+                    </Section>
+                  )}
+
+                  {/* SERVICIO */}
+                  {listingType === "service" && (
+                    <Section title="Detalles del servicio">
+                      <div style={{ marginBottom: 14 }}>
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 7 }}>Categoría de servicio</label>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                          {SERVICE_CATEGORIES.filter(c => c !== "Todos").map(cat => (
+                            <button key={cat} onClick={() => setField("serviceCategory", cat)} style={{
+                              padding: "5px 12px", borderRadius: 999, fontSize: 12, border: "1px solid",
+                              borderColor: form.serviceCategory === cat ? "var(--green)" : "var(--border)",
+                              background:  form.serviceCategory === cat ? "var(--green-subtle)" : "var(--surface)",
+                              color:       form.serviceCategory === cat ? "var(--green)" : "var(--text-2)",
+                              fontWeight:  form.serviceCategory === cat ? 600 : 400, cursor: "pointer",
+                            }}>{cat}</button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div style={{ marginBottom: 14 }}>
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 7 }}>Modalidad</label>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          {([
+                            { value: "presencial", label: "🏠 Presencial" },
+                            { value: "remoto",     label: "💻 Remoto" },
+                            { value: "ambos",      label: "✅ Ambos" },
+                          ] as const).map(opt => (
+                            <ToggleButton key={opt.value} active={form.modalidad === opt.value} onClick={() => setField("modalidad", opt.value)}>{opt.label}</ToggleButton>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div style={{ marginBottom: 14 }}>
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 7 }}>Precio por</label>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          {([
+                            { value: "hora",      label: "Por hora" },
+                            { value: "trabajo",   label: "Por trabajo" },
+                            { value: "mes",       label: "Por mes" },
+                            { value: "convenir",  label: "A convenir" },
+                          ] as const).map(opt => (
+                            <ToggleButton key={opt.value} active={form.precioTipo === opt.value} onClick={() => setField("precioTipo", opt.value)}>{opt.label}</ToggleButton>
+                          ))}
+                        </div>
+                      </div>
+
+                      <Field label="Disponibilidad (opcional)" hint="Ej: Lunes a viernes de 9 a 18hs">
+                        <input value={form.disponibilidad} onChange={e => setField("disponibilidad", e.target.value)}
+                          placeholder="Ej: Lunes a viernes de 9 a 18hs" style={inputStyle()} />
+                      </Field>
+                    </Section>
+                  )}
+
+                  {/* INMUEBLE */}
+                  {listingType === "property" && (
+                    <Section title="Detalles del inmueble">
+                      <div style={{ marginBottom: 14 }}>
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 7 }}>Operación</label>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          {([
+                            { value: "venta",         label: "🏷️ Venta" },
+                            { value: "alquiler",      label: "🔑 Alquiler" },
+                            { value: "alquiler_temp", label: "🌴 Alquiler temporario" },
+                          ] as const).map(opt => (
+                            <ToggleButton key={opt.value} active={form.operacion === opt.value} onClick={() => setField("operacion", opt.value)}>{opt.label}</ToggleButton>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div style={{ marginBottom: 14 }}>
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 7 }}>Tipo de propiedad</label>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                          {PROPERTY_TYPES.filter(t => t !== "Todos").map(t => (
+                            <button key={t} onClick={() => setField("tipoPropiedad", t)} style={{
+                              padding: "5px 12px", borderRadius: 999, fontSize: 12, border: "1px solid",
+                              borderColor: form.tipoPropiedad === t ? "var(--green)" : "var(--border)",
+                              background:  form.tipoPropiedad === t ? "var(--green-subtle)" : "var(--surface)",
+                              color:       form.tipoPropiedad === t ? "var(--green)" : "var(--text-2)",
+                              fontWeight:  form.tipoPropiedad === t ? 600 : 400, cursor: "pointer",
+                            }}>{t}</button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+                        <Field label="Superficie (m²)">
+                          <input value={form.superficieM2} onChange={e => setField("superficieM2", e.target.value.replace(/\D/g, ""))}
+                            placeholder="Ej: 65" inputMode="numeric" style={inputStyle()} />
+                        </Field>
+                        <Field label="Ambientes">
+                          <input value={form.ambientes} onChange={e => setField("ambientes", e.target.value.replace(/\D/g, ""))}
+                            placeholder="Ej: 3" inputMode="numeric" style={inputStyle()} />
+                        </Field>
+                        <Field label="Dormitorios">
+                          <input value={form.dormitorios} onChange={e => setField("dormitorios", e.target.value.replace(/\D/g, ""))}
+                            placeholder="Ej: 2" inputMode="numeric" style={inputStyle()} />
+                        </Field>
+                        <Field label="Baños">
+                          <input value={form.banos} onChange={e => setField("banos", e.target.value.replace(/\D/g, ""))}
+                            placeholder="Ej: 1" inputMode="numeric" style={inputStyle()} />
+                        </Field>
+                      </div>
+
+                      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 14 }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                          <input type="checkbox" checked={form.garaje} onChange={e => setField("garaje", e.target.checked)}
+                            style={{ width: 15, height: 15, accentColor: "var(--green)", cursor: "pointer" }} />
+                          <span style={{ fontSize: 13, color: "var(--text-2)" }}>🚗 Garaje / cochera</span>
+                        </label>
+                      </div>
+
+                      {form.operacion !== "venta" && (
+                        <Field label="Expensas mensuales (opcional)">
+                          <input value={form.expensas} onChange={e => setField("expensas", e.target.value.replace(/\D/g, ""))}
+                            placeholder="Ej: 25000" inputMode="numeric" style={inputStyle()} />
+                        </Field>
+                      )}
+                    </Section>
+                  )}
+
+                  {/* VEHÍCULO */}
+                  {listingType === "vehicle" && (
+                    <Section title="Detalles del vehículo">
+                      <div style={{ marginBottom: 14 }}>
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 7 }}>Tipo de vehículo</label>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                          {VEHICLE_TYPES.filter(t => t !== "Todos").map(t => (
+                            <button key={t} onClick={() => setField("tipoVehiculo", t)} style={{
+                              padding: "5px 12px", borderRadius: 999, fontSize: 12, border: "1px solid",
+                              borderColor: form.tipoVehiculo === t ? "var(--green)" : "var(--border)",
+                              background:  form.tipoVehiculo === t ? "var(--green-subtle)" : "var(--surface)",
+                              color:       form.tipoVehiculo === t ? "var(--green)" : "var(--text-2)",
+                              fontWeight:  form.tipoVehiculo === t ? 600 : 400, cursor: "pointer",
+                            }}>{t}</button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <Field label="Marca" error={errors.marca}>
+                          <input value={form.marca} onChange={e => setField("marca", e.target.value)}
+                            placeholder="Ej: Toyota" style={inputStyle(!!errors.marca)} />
+                        </Field>
+                        <Field label="Modelo" error={errors.modelo}>
+                          <input value={form.modelo} onChange={e => setField("modelo", e.target.value)}
+                            placeholder="Ej: Corolla" style={inputStyle(!!errors.modelo)} />
+                        </Field>
+                        <Field label="Año" error={errors.anio}>
+                          <input value={form.anio} onChange={e => setField("anio", e.target.value.replace(/\D/g, "").slice(0, 4))}
+                            placeholder="Ej: 2018" inputMode="numeric" style={inputStyle(!!errors.anio)} />
+                        </Field>
+                        <Field label="Kilometraje" hint="Dejar vacío si es 0 km">
+                          <input value={form.km} onChange={e => setField("km", e.target.value.replace(/\D/g, ""))}
+                            placeholder="Ej: 45000" inputMode="numeric" style={inputStyle()} />
+                        </Field>
+                      </div>
+
+                      <div style={{ marginTop: 14, marginBottom: 14 }}>
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 7 }}>Combustible</label>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          {([
+                            { value: "nafta",    label: "⛽ Nafta" },
+                            { value: "diesel",   label: "🛢️ Diésel" },
+                            { value: "gnc",      label: "🔵 GNC" },
+                            { value: "electrico",label: "⚡ Eléctrico" },
+                            { value: "hibrido",  label: "♻️ Híbrido" },
+                          ] as const).map(opt => (
+                            <ToggleButton key={opt.value} active={form.combustible === opt.value} onClick={() => setField("combustible", opt.value)}>{opt.label}</ToggleButton>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div style={{ marginBottom: 14 }}>
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 7 }}>Transmisión</label>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <ToggleButton active={form.transmision === "manual"}    onClick={() => setField("transmision", "manual")}>Manual</ToggleButton>
+                          <ToggleButton active={form.transmision === "automatica"} onClick={() => setField("transmision", "automatica")}>Automática</ToggleButton>
+                        </div>
+                      </div>
+
+                      <Field label="Color (opcional)">
+                        <input value={form.color} onChange={e => setField("color", e.target.value)}
+                          placeholder="Ej: Blanco" style={inputStyle()} />
+                      </Field>
+                    </Section>
+                  )}
+
+                  {/* Descripción */}
+                  <Section title="Descripción">
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 5 }}>
+                      <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>Descripción</label>
+                      <span style={{ fontSize: 11, color: form.description.length >= MAX_DESC ? "var(--red)" : "var(--text-3)", fontWeight: form.description.length >= MAX_DESC ? 600 : 400 }}>
+                        {form.description.length}/{MAX_DESC}
+                      </span>
+                    </div>
+                    <textarea value={form.description} onChange={e => setField("description", e.target.value.slice(0, MAX_DESC))}
+                      placeholder={
+                        listingType === "service"  ? "Describí qué incluye el servicio, tu experiencia, zona de cobertura..." :
+                        listingType === "property" ? "Describí el estado del inmueble, ubicación exacta, comodidades..." :
+                        listingType === "vehicle"  ? "Describí el estado general, historial de service, extras incluidos..." :
+                        "Describí el estado, qué incluye, condiciones de entrega..."
+                      }
+                      rows={4} style={{ ...inputStyle(!!errors.description), resize: "vertical", lineHeight: 1.65 }} />
+                    {errors.description && <div style={{ fontSize: 12, color: "var(--red)", marginTop: 4 }}>{errors.description}</div>}
+                  </Section>
+
+                  {/* Ubicación */}
+                  <Section title="Ubicación">
+                    <Field label={listingType === "service" ? "Zona de cobertura" : listingType === "property" ? "Ubicación del inmueble" : "Zona"} error={errors.location}>
+                      <LocationInput value={form.location}
+                        onChange={(name, lat, lng) => { setField("location", name); setLocationLat(lat); setLocationLng(lng); }}
+                        onClear={() => { setField("location", ""); setLocationLat(null); setLocationLng(null); }}
+                        hasError={!!errors.location} />
+                    </Field>
+                  </Section>
+
+                  {/* Contacto */}
+                  <Section title="Contacto">
+                    <Field label="WhatsApp (opcional)" hint="Si lo completás, los interesados podrán contactarte directamente.">
+                      <div style={{ position: "relative" }}>
+                        <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "var(--text-3)", pointerEvents: "none" }}>+54</span>
+                        <input value={form.phone}
+                          onChange={e => setField("phone", e.target.value.replace(/\D/g, "").slice(0, 12))}
+                          placeholder="11 2345 6789" inputMode="tel"
+                          style={{ ...inputStyle(), paddingLeft: 38 }} />
+                      </div>
+                    </Field>
+                  </Section>
+
+                  <button onClick={handleSubmit} disabled={uploading} style={{
+                    background: "var(--green)", color: "#fff", border: "none", borderRadius: 6,
+                    padding: "11px", fontSize: 14, fontWeight: 500,
+                    cursor: uploading ? "default" : "pointer", opacity: uploading ? 0.7 : 1,
+                  }}>
+                    {uploading ? "Publicando..." : "Publicar"}
+                  </button>
+                </div>
+
+                {/* Vista previa */}
+                <div className="hide-mobile sticky-col">
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase" as const, letterSpacing: 0.5, marginBottom: 10 }}>
+                    Vista previa
+                  </div>
+                  <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
+                    {imagePreviews[0] ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={imagePreviews[0]} alt="preview" style={{ width: "100%", height: 128, objectFit: "cover", display: "block" }} />
+                    ) : (
                       <div style={{
-                        position: "absolute", bottom: 0, left: 0, right: 0,
-                        background: "rgba(0,0,0,0.45)",
-                        fontSize: 9, color: "#fff", textAlign: "center",
-                        padding: "2px 0", fontWeight: 600, letterSpacing: 0.3,
+                        background: categoryColors[listingType === "service" ? form.serviceCategory : listingType === "property" ? form.tipoPropiedad : listingType === "vehicle" ? form.tipoVehiculo : form.category] ?? "#f5f5f3",
+                        height: 128, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 44,
                       }}>
-                        PRINCIPAL
+                        {categoryEmojis[listingType === "service" ? form.serviceCategory : listingType === "property" ? form.tipoPropiedad : listingType === "vehicle" ? form.tipoVehiculo : form.category]?.[0] ?? form.emoji}
                       </div>
                     )}
-                    <button
-                      onClick={() => removeImage(i)}
-                      style={{
-                        position: "absolute", top: 3, right: 3,
-                        width: 18, height: 18, borderRadius: "50%",
-                        background: "rgba(0,0,0,0.55)", border: "none",
-                        color: "#fff", fontSize: 11, cursor: "pointer",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        lineHeight: 1, padding: 0,
-                      }}
-                    >
-                      ×
-                    </button>
+                    <div style={{ padding: "11px 13px 13px" }}>
+                      {/* Badge tipo */}
+                      {listingType !== "product" && (
+                        <div style={{ marginBottom: 6 }}>
+                          <span style={{
+                            fontSize: 10, fontWeight: 700, letterSpacing: 0.3, textTransform: "uppercase" as const,
+                            padding: "2px 7px", borderRadius: 4,
+                            background: listingType === "service" ? "#ede9fe" : listingType === "property" ? "#d1fae5" : "#dbeafe",
+                            color:      listingType === "service" ? "#5b21b6" : listingType === "property" ? "#065f46" : "#1e40af",
+                          }}>
+                            {LISTING_TYPES.find(t => t.value === listingType)?.emoji} {LISTING_TYPES.find(t => t.value === listingType)?.label}
+                          </span>
+                        </div>
+                      )}
+                      <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 5, lineHeight: 1.35, minHeight: 18 }}>
+                        {form.title || <span style={{ color: "var(--text-3)" }}>Título de la publicación</span>}
+                      </div>
+                      <div style={{ fontSize: 15, fontWeight: 600, color: "var(--green)", marginBottom: 5, letterSpacing: -0.3 }}>
+                        {priceDisplay || <span style={{ color: "var(--text-3)", fontWeight: 400, fontSize: 13 }}>Precio</span>}
+                        {form.negotiable && <span style={{ fontSize: 10, background: "var(--green-subtle)", color: "var(--green)", borderRadius: 4, padding: "2px 6px", marginLeft: 6, fontWeight: 600 }}>Negociable</span>}
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--text-3)", display: "flex", justifyContent: "space-between" }}>
+                        <span>{form.location || "Ubicación"}</span>
+                        <span style={{ color: "var(--green)", fontWeight: 500 }}>Cerca tuyo</span>
+                      </div>
+                    </div>
                   </div>
-                ))}
-
-                {/* Botón agregar (si hay espacio) */}
-                {imageFiles.length < MAX_IMAGES && (
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    style={{
-                      width: 80, height: 80,
-                      border: "1.5px dashed var(--border)",
-                      borderRadius: 6,
-                      background: "var(--bg)",
-                      cursor: "pointer",
-                      display: "flex", flexDirection: "column",
-                      alignItems: "center", justifyContent: "center",
-                      gap: 4, color: "var(--text-3)",
-                      transition: "border-color 0.12s, color 0.12s",
-                      flexShrink: 0,
-                    }}
-                    onMouseEnter={e => {
-                      (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--green)";
-                      (e.currentTarget as HTMLButtonElement).style.color = "var(--green)";
-                    }}
-                    onMouseLeave={e => {
-                      (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border)";
-                      (e.currentTarget as HTMLButtonElement).style.color = "var(--text-3)";
-                    }}
-                  >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="3" width="18" height="18" rx="2"/>
-                      <circle cx="8.5" cy="8.5" r="1.5"/>
-                      <polyline points="21 15 16 10 5 21"/>
-                    </svg>
-                    <span style={{ fontSize: 10, fontWeight: 500 }}>
-                      {imageFiles.length === 0 ? "Agregar foto" : "Agregar más"}
-                    </span>
-                  </button>
-                )}
-              </div>
-
-              {imageFiles.length === 0 && (
-                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 10 }}>
-                  Podés subir hasta {MAX_IMAGES} fotos. La primera será la imagen principal.
-                </div>
-              )}
-            </Section>
-
-            {/* ── Info básica ── */}
-            <Section title="Información básica">
-              <Field label="Título" error={errors.title}>
-                <input
-                  value={form.title}
-                  onChange={e => setField("title", e.target.value)}
-                  placeholder="Ej: iPhone 13 128GB libre"
-                  style={inputStyle(!!errors.title)}
-                />
-              </Field>
-              <Field label="Precio" error={errors.priceRaw}>
-                <input
-                  value={form.priceRaw}
-                  onChange={e => setField("priceRaw", e.target.value.replace(/\D/g, ""))}
-                  placeholder="Ej: 250000"
-                  inputMode="numeric"
-                  style={inputStyle(!!errors.priceRaw)}
-                />
-                {form.priceRaw && (
-                  <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 4 }}>
-                    Se mostrará como{" "}
-                    <strong style={{ color: "var(--green)" }}>{priceDisplay}</strong>
+                  <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 10, lineHeight: 1.5 }}>
+                    Así vas a aparecer en el feed.
                   </div>
-                )}
-              </Field>
-              <div style={{ marginBottom: 2 }}>
-                <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 7 }}>
-                  Condición
-                </label>
-                <div style={{ display: "flex", gap: 8 }}>
-                  {(["Nuevo", "Usado"] as const).map(c => (
-                    <button
-                      key={c}
-                      onClick={() => setForm(f => ({ ...f, condition: c }))}
-                      style={{
-                        padding: "6px 18px", borderRadius: 6, fontSize: 13,
-                        border: "1px solid",
-                        borderColor: form.condition === c ? "var(--green)" : "var(--border)",
-                        background:  form.condition === c ? "var(--green-subtle)" : "var(--surface)",
-                        color:       form.condition === c ? "var(--green)" : "var(--text-2)",
-                        fontWeight:  form.condition === c ? 600 : 400,
-                        cursor: "pointer",
-                      }}
-                    >{c}</button>
-                  ))}
                 </div>
+
               </div>
-
-              {/* Negociable */}
-              <div style={{ marginTop: 12 }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-                  <input
-                    type="checkbox"
-                    checked={form.negotiable}
-                    onChange={e => setForm(f => ({ ...f, negotiable: e.target.checked }))}
-                    style={{ width: 15, height: 15, accentColor: "var(--green)", cursor: "pointer", flexShrink: 0 }}
-                  />
-                  <span style={{ fontSize: 13, color: "var(--text-2)", userSelect: "none" }}>Precio negociable</span>
-                </label>
-              </div>
-
-              {/* Stock */}
-              <div style={{ marginTop: 14 }}>
-                <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 7 }}>
-                  Stock disponible
-                </label>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <button
-                    onClick={() => setForm(f => ({ ...f, stock: Math.max(1, f.stock - 1) }))}
-                    style={{
-                      width: 30, height: 30, borderRadius: 6,
-                      border: "1px solid var(--border)", background: "var(--bg)",
-                      cursor: form.stock <= 1 ? "default" : "pointer",
-                      fontSize: 17, color: form.stock <= 1 ? "var(--border)" : "var(--text-2)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      transition: "color 0.1s",
-                    }}
-                  >−</button>
-                  <span style={{ fontSize: 15, fontWeight: 700, minWidth: 28, textAlign: "center" }}>
-                    {form.stock}
-                  </span>
-                  <button
-                    onClick={() => setForm(f => ({ ...f, stock: Math.min(999, f.stock + 1) }))}
-                    style={{
-                      width: 30, height: 30, borderRadius: 6,
-                      border: "1px solid var(--border)", background: "var(--bg)",
-                      cursor: "pointer", fontSize: 17, color: "var(--text-2)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}
-                  >+</button>
-                  <span style={{ fontSize: 12, color: "var(--text-3)" }}>
-                    {form.stock === 1 ? "unidad" : "unidades"}
-                  </span>
-                </div>
-              </div>
-            </Section>
-
-            {/* ── Categoría ── */}
-            <Section title="Categoría">
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
-                {categories.filter(c => c !== "Todos").map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => handleCategoryChange(cat)}
-                    style={{
-                      padding: "5px 13px", borderRadius: 999,
-                      border: "1px solid",
-                      borderColor: form.category === cat ? "var(--green)" : "var(--border)",
-                      background:  form.category === cat ? "var(--green-subtle)" : "var(--surface)",
-                      color:       form.category === cat ? "var(--green)" : "var(--text-2)",
-                      fontWeight:  form.category === cat ? 600 : 400,
-                      fontSize: 13, cursor: "pointer",
-                    }}
-                  >{cat}</button>
-                ))}
-              </div>
-              <div style={{ fontSize: 12, fontWeight: 500, color: "var(--text-2)", marginBottom: 8 }}>Elegí un ícono</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {emojis.map(em => (
-                  <button
-                    key={em}
-                    onClick={() => setField("emoji", em)}
-                    style={{
-                      width: 40, height: 40, fontSize: 20, borderRadius: 6,
-                      border: "1px solid",
-                      borderColor: form.emoji === em ? "var(--green)" : "var(--border)",
-                      background:  form.emoji === em ? "var(--green-subtle)" : "var(--bg)",
-                      cursor: "pointer",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      transition: "all 0.1s",
-                    }}
-                  >{em}</button>
-                ))}
-              </div>
-
-              {/* Tip contextual */}
-              {categoryTips[form.category] && (
-                <div style={{
-                  marginTop: 12, padding: "9px 12px",
-                  background: "var(--green-subtle)", borderRadius: 6,
-                  fontSize: 12, color: "var(--text-2)", lineHeight: 1.55,
-                }}>
-                  {categoryTips[form.category]}
-                </div>
-              )}
-            </Section>
-
-            {/* ── Entrega y contacto ── */}
-            <Section title="Entrega y contacto">
-              {/* Forma de entrega */}
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 7 }}>
-                  Forma de entrega
-                </label>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {([
-                    { value: "retiro", label: "🤝 Retiro en persona" },
-                    { value: "envio",  label: "📦 Envío" },
-                    { value: "ambos",  label: "✅ Ambos" },
-                  ] as const).map(opt => (
-                    <button
-                      key={opt.value}
-                      onClick={() => setForm(f => ({ ...f, delivery: opt.value }))}
-                      style={{
-                        padding: "6px 14px", borderRadius: 6, fontSize: 13,
-                        border: "1px solid",
-                        borderColor: form.delivery === opt.value ? "var(--green)" : "var(--border)",
-                        background:  form.delivery === opt.value ? "var(--green-subtle)" : "var(--surface)",
-                        color:       form.delivery === opt.value ? "var(--green)" : "var(--text-2)",
-                        fontWeight:  form.delivery === opt.value ? 600 : 400,
-                        cursor: "pointer",
-                      }}
-                    >{opt.label}</button>
-                  ))}
-                </div>
-              </div>
-
-              {/* WhatsApp opcional */}
-              <Field label="WhatsApp (opcional)">
-                <div style={{ position: "relative" }}>
-                  <span style={{
-                    position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)",
-                    fontSize: 13, color: "var(--text-3)", pointerEvents: "none",
-                  }}>+54</span>
-                  <input
-                    value={form.phone}
-                    onChange={e => setForm(f => ({ ...f, phone: e.target.value.replace(/\D/g, "").slice(0, 12) }))}
-                    placeholder="11 2345 6789"
-                    inputMode="tel"
-                    style={{ ...inputStyle(false), paddingLeft: 38 }}
-                  />
-                </div>
-                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 5, lineHeight: 1.4 }}>
-                  Si lo completás, los compradores podrán contactarte por WhatsApp.
-                </div>
-              </Field>
-            </Section>
-
-            {/* ── Descripción ── */}
-            <Section title="Descripción">
-              <div style={{ marginBottom: 14 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 5 }}>
-                  <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>Descripción</label>
-                  <span style={{
-                    fontSize: 11,
-                    color: form.description.length >= MAX_DESC ? "#ef4444" : "var(--text-3)",
-                    fontWeight: form.description.length >= MAX_DESC ? 600 : 400,
-                  }}>
-                    {form.description.length}/{MAX_DESC}
-                  </span>
-                </div>
-                <textarea
-                  value={form.description}
-                  onChange={e => setField("description", e.target.value.slice(0, MAX_DESC))}
-                  placeholder="Describí el estado, qué incluye, condiciones de entrega..."
-                  rows={4}
-                  style={{ ...inputStyle(!!errors.description), resize: "vertical", lineHeight: 1.65 }}
-                />
-                {errors.description && (
-                  <div style={{ fontSize: 12, color: "#dc2626", marginTop: 4 }}>{errors.description}</div>
-                )}
-              </div>
-            </Section>
-
-            {/* ── Ubicación ── */}
-            <Section title="Ubicación">
-              <Field label="Zona del producto" error={errors.location}>
-                <LocationInput
-                  value={form.location}
-                  onChange={(name, lat, lng) => {
-                    setField("location", name);
-                    setLocationLat(lat);
-                    setLocationLng(lng);
-                  }}
-                  onClear={() => { setField("location", ""); setLocationLat(null); setLocationLng(null); }}
-                  hasError={!!errors.location}
-                />
-              </Field>
-            </Section>
-
-            <button
-              onClick={handleSubmit}
-              disabled={uploading}
-              style={{
-                background: "var(--green)", color: "#fff",
-                border: "none", borderRadius: 6,
-                padding: "11px", fontSize: 14, fontWeight: 500,
-                cursor: uploading ? "default" : "pointer",
-                opacity: uploading ? 0.7 : 1,
-                letterSpacing: -0.1,
-              }}
-            >
-              {uploading ? "Publicando..." : "Publicar"}
-            </button>
-          </div>
-
-          {/* Preview */}
-          <div className="hide-mobile sticky-col">
-            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase" as const, letterSpacing: 0.5, marginBottom: 10 }}>
-              Vista previa
-            </div>
-            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
-              {previewImage ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={previewImage}
-                  alt="preview"
-                  style={{ width: "100%", height: 128, objectFit: "cover", display: "block" }}
-                />
-              ) : (
-                <div style={{ background: bg, height: 128, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 44 }}>
-                  {form.emoji}
-                </div>
-              )}
-              <div style={{ padding: "11px 13px 13px" }}>
-                <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 5, lineHeight: 1.35, minHeight: 18 }}>
-                  {form.title || <span style={{ color: "var(--text-3)" }}>Título del producto</span>}
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 7, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 15, fontWeight: 600, color: "var(--green)", letterSpacing: -0.3, minHeight: 20 }}>
-                    {priceDisplay || <span style={{ color: "var(--text-3)", fontWeight: 400, fontSize: 13 }}>Precio</span>}
-                  </span>
-                  {form.negotiable && (
-                    <span style={{
-                      fontSize: 10, fontWeight: 600, color: "var(--green)",
-                      background: "var(--green-subtle)", borderRadius: 4, padding: "2px 6px",
-                    }}>
-                      Negociable
-                    </span>
-                  )}
-                </div>
-                <div style={{ fontSize: 11, color: "var(--text-3)", display: "flex", justifyContent: "space-between" }}>
-                  <span>{form.location || "Ubicación"}</span>
-                  <span style={{ color: "var(--green)", fontWeight: 500 }}>Cerca tuyo</span>
-                </div>
-              </div>
-            </div>
-            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 10, lineHeight: 1.5 }}>
-              Así vas a aparecer en el feed de compradores.
-            </div>
-          </div>
-
-        </div>
+            )}
+          </>
         )}
       </div>
     </div>

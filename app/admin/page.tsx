@@ -5,6 +5,7 @@ import Link from "next/link";
 import Navbar from "../components/Navbar";
 import { getCurrentUser } from "../lib/auth";
 import { supabase } from "../lib/supabase";
+import { PRECIOS, LABELS, type TipoPago } from "../lib/pagos";
 
 // Email solo se usa para la redirección UI (guard de UX). La auth real es JWT en el servidor.
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "";
@@ -27,7 +28,7 @@ async function adminAction(action: string, userId?: string, productId?: number) 
   return res.ok;
 }
 
-type Tab = "dni" | "negocios" | "destacados" | "banners" | "usuarios";
+type Tab = "dni" | "negocios" | "destacados" | "banners" | "usuarios" | "precios" | "codigos";
 
 interface DniRequest {
   id: string; name: string; email: string;
@@ -146,6 +147,8 @@ export default function AdminPage() {
           <button style={tabStyle(tab === "destacados")}  onClick={() => setTab("destacados")}>Destacados</button>
           <button style={tabStyle(tab === "banners")}     onClick={() => setTab("banners")}>Banners</button>
           <button style={tabStyle(tab === "usuarios")}    onClick={() => setTab("usuarios")}>Usuarios</button>
+          <button style={tabStyle(tab === "precios")}     onClick={() => setTab("precios")}>💰 Precios</button>
+          <button style={tabStyle(tab === "codigos")}     onClick={() => setTab("codigos")}>🎟️ Códigos</button>
         </div>
 
         {tab === "dni"        && <DniTab acting={acting} setActing={setActing} onRefresh={loadStats} />}
@@ -153,6 +156,8 @@ export default function AdminPage() {
         {tab === "destacados" && <DestacadosTab acting={acting} setActing={setActing} />}
         {tab === "banners"    && <BannersTab acting={acting} setActing={setActing} />}
         {tab === "usuarios"   && <UsuariosTab acting={acting} setActing={setActing} />}
+        {tab === "precios"    && <PreciosTab />}
+        {tab === "codigos"    && <CodigosTab />}
       </div>
     </div>
   );
@@ -548,6 +553,658 @@ function UsuariosTab({ acting, setActing }: { acting: string | null; setActing: 
     </div>
   );
 }
+
+// ── Precios ───────────────────────────────────────────────────────────────────
+
+const PRECIO_KEYS = Object.keys(PRECIOS) as TipoPago[];
+
+const PRECIO_DESCRIPTIONS: Record<TipoPago, { emoji: string; hint: string }> = {
+  destacar_7:   { emoji: "⭐", hint: "Publicación aparece primera en el feed — 7 días" },
+  destacar_30:  { emoji: "⭐", hint: "Publicación aparece primera en el feed — 30 días" },
+  negocio_mes:  { emoji: "🏪", hint: "Perfil Modo Negocio con nombre, categoría y verificación — 1 mes" },
+  banner_7:     { emoji: "🎯", hint: "Slot publicitario en el feed — 7 días" },
+};
+
+function PreciosTab() {
+  const [values,  setValues]  = useState<Record<TipoPago, string>>(() =>
+    Object.fromEntries(PRECIO_KEYS.map(k => [k, String(PRECIOS[k])])) as Record<TipoPago, string>
+  );
+  const [loading,  setLoading]  = useState(true);
+  const [saving,   setSaving]   = useState(false);
+  const [saved,    setSaved]    = useState(false);
+  const [errors,   setErrors]   = useState<Record<string, string>>({});
+
+  // Cargar precios actuales desde la DB
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("app_config").select("key, value").in("key", PRECIO_KEYS);
+      if (data && data.length > 0) {
+        setValues(prev => {
+          const next = { ...prev };
+          for (const row of data) {
+            if (row.key in next) next[row.key as TipoPago] = String(row.value);
+          }
+          return next;
+        });
+      }
+      setLoading(false);
+    })();
+  }, []);
+
+  function handleChange(key: TipoPago, raw: string) {
+    setValues(v => ({ ...v, [key]: raw.replace(/\D/g, "") }));
+    setErrors(e => ({ ...e, [key]: "" }));
+    setSaved(false);
+  }
+
+  async function handleSave() {
+    // Validar
+    const errs: Record<string, string> = {};
+    for (const key of PRECIO_KEYS) {
+      const n = Number(values[key]);
+      if (!values[key] || isNaN(n) || n <= 0) errs[key] = "Ingresá un valor válido mayor a 0";
+    }
+    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+
+    setSaving(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) { setSaving(false); return; }
+
+    const res = await fetch("/api/admin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+      body: JSON.stringify({
+        action: "update_precios",
+        precios: Object.fromEntries(PRECIO_KEYS.map(k => [k, Number(values[k])])),
+      }),
+    });
+
+    setSaving(false);
+    if (res.ok) {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    }
+  }
+
+  const defaultVal = (key: TipoPago) => String(PRECIOS[key]);
+  const hasChanges = PRECIO_KEYS.some(k => values[k] !== defaultVal(k));
+
+  if (loading) return <Loader />;
+
+  return (
+    <div style={{ maxWidth: 560 }}>
+      <div style={{
+        background: "var(--surface)", border: "1px solid var(--border)",
+        borderRadius: 8, overflow: "hidden",
+      }}>
+        {/* Header */}
+        <div style={{
+          background: "var(--bg)", borderBottom: "1px solid var(--border)",
+          padding: "14px 18px",
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+        }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>Precios de suscripciones</div>
+            <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
+              Valores en pesos argentinos (ARS). Se aplican a los próximos pagos.
+            </div>
+          </div>
+          {saved && (
+            <span style={{
+              fontSize: 12, fontWeight: 600, color: "var(--green)",
+              background: "var(--green-subtle)", border: "1px solid #c5e8dc",
+              borderRadius: 6, padding: "4px 10px",
+            }}>
+              ✓ Guardado
+            </span>
+          )}
+        </div>
+
+        {/* Rows */}
+        {PRECIO_KEYS.map((key, i) => {
+          const meta    = PRECIO_DESCRIPTIONS[key];
+          const current = Number(values[key]);
+          const original = PRECIOS[key];
+          const changed  = current !== original && !!values[key];
+
+          return (
+            <div
+              key={key}
+              style={{
+                padding: "16px 18px",
+                borderBottom: i < PRECIO_KEYS.length - 1 ? "1px solid var(--border)" : "none",
+                background: changed ? "rgba(26,171,130,0.03)" : "transparent",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+                {/* Emoji */}
+                <div style={{
+                  width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                  background: "var(--bg)", border: "1px solid var(--border)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 18,
+                }}>
+                  {meta.emoji}
+                </div>
+
+                {/* Info + input */}
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>{LABELS[key]}</div>
+                    {changed && (
+                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.3, padding: "1px 6px", borderRadius: 3, background: "var(--green-subtle)", color: "var(--green)", border: "1px solid #c5e8dc" }}>
+                        Modificado
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 10 }}>{meta.hint}</div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    {/* Input de precio */}
+                    <div style={{ position: "relative", flex: 1, maxWidth: 160 }}>
+                      <span style={{
+                        position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)",
+                        fontSize: 14, fontWeight: 600, color: "var(--text-3)",
+                      }}>$</span>
+                      <input
+                        value={values[key]}
+                        onChange={e => handleChange(key, e.target.value)}
+                        inputMode="numeric"
+                        placeholder={defaultVal(key)}
+                        style={{
+                          width: "100%",
+                          padding: "8px 10px 8px 24px",
+                          border: `1px solid ${errors[key] ? "#dc2626" : changed ? "var(--green)" : "var(--border)"}`,
+                          borderRadius: 6, fontSize: 14, fontWeight: 600,
+                          color: "var(--text)", background: "var(--bg)",
+                          outline: "none", fontFamily: "inherit",
+                          boxSizing: "border-box" as const,
+                        }}
+                      />
+                    </div>
+
+                    {/* Preview formatted */}
+                    {values[key] && (
+                      <div style={{ fontSize: 13, color: "var(--text-3)", whiteSpace: "nowrap" as const }}>
+                        = <strong style={{ color: "var(--text)" }}>
+                          ${Number(values[key]).toLocaleString("es-AR")}
+                        </strong>
+                      </div>
+                    )}
+
+                    {/* Reset al default */}
+                    {changed && (
+                      <button
+                        onClick={() => { setValues(v => ({ ...v, [key]: defaultVal(key) })); setSaved(false); }}
+                        title="Volver al valor por defecto"
+                        style={{
+                          fontSize: 11, color: "var(--text-3)", background: "none",
+                          border: "1px solid var(--border)", borderRadius: 5,
+                          padding: "5px 8px", cursor: "pointer", whiteSpace: "nowrap" as const,
+                        }}
+                      >
+                        ↩ Reset
+                      </button>
+                    )}
+                  </div>
+                  {errors[key] && (
+                    <div style={{ fontSize: 11, color: "#dc2626", marginTop: 4 }}>{errors[key]}</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Footer */}
+        <div style={{
+          background: "var(--bg)", borderTop: "1px solid var(--border)",
+          padding: "14px 18px",
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+        }}>
+          <div style={{ fontSize: 11, color: "var(--text-3)", lineHeight: 1.5 }}>
+            ⚠️ Los precios vigentes se aplican a nuevas compras. Los pagos ya procesados no se ven afectados.
+          </div>
+          <button
+            onClick={handleSave}
+            disabled={saving || !hasChanges}
+            style={{
+              padding: "8px 20px", borderRadius: 6, border: "none",
+              background: hasChanges && !saving ? "var(--green)" : "var(--border)",
+              color: hasChanges && !saving ? "#fff" : "var(--text-3)",
+              fontSize: 13, fontWeight: 600, cursor: saving || !hasChanges ? "default" : "pointer",
+              flexShrink: 0, transition: "all 0.12s",
+            }}
+          >
+            {saving ? "Guardando..." : "Guardar cambios"}
+          </button>
+        </div>
+      </div>
+
+      <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 10, lineHeight: 1.6 }}>
+        Valores por defecto del código:{" "}
+        {PRECIO_KEYS.map(k => `${LABELS[k]}: $${PRECIOS[k].toLocaleString("es-AR")}`).join(" · ")}
+      </div>
+    </div>
+  );
+}
+
+// ── Códigos promocionales ─────────────────────────────────────────────────────
+
+interface PromoRow {
+  code: string; note: string | null; uses: number; maxUses: number | null;
+  durationDays: number; expiresAt: string | null; active: boolean; createdAt: string;
+}
+
+const BLANK_FORM = { code: "", note: "", maxUses: "", durationDays: "30", expiresAt: "" };
+
+function genCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+}
+
+async function promoAction(action: string, payload: Record<string, unknown>) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) return { ok: false, error: "Sin sesión" };
+  const res = await fetch("/api/admin", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+    body: JSON.stringify({ action, ...payload }),
+  });
+  const json = await res.json() as Record<string, unknown>;
+  return { ok: res.ok, error: json.error as string | undefined };
+}
+
+function CodigosTab() {
+  const [rows,       setRows]       = useState<PromoRow[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [showForm,   setShowForm]   = useState(false);
+  const [form,       setForm]       = useState(BLANK_FORM);
+  const [formErr,    setFormErr]    = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [acting,     setActing]     = useState<string | null>(null);
+  const [copied,     setCopied]     = useState<string | null>(null);
+  // Vista de usos de un código
+  const [usesModal,  setUsesModal]  = useState<{ code: string; uses: PromoUseRow[] } | null>(null);
+
+  useEffect(() => { loadCodes(); }, []);
+
+  async function loadCodes() {
+    const { data } = await supabase
+      .from("promo_codes")
+      .select("code, note, uses, max_uses, duration_days, expires_at, active, created_at")
+      .order("created_at", { ascending: false });
+    setRows((data ?? []).map(r => ({
+      code:         r.code as string,
+      note:         r.note as string | null,
+      uses:         (r.uses as number) ?? 0,
+      maxUses:      r.max_uses as number | null,
+      durationDays: (r.duration_days as number) ?? 30,
+      expiresAt:    r.expires_at as string | null,
+      active:       (r.active as boolean) ?? false,
+      createdAt:    r.created_at as string,
+    })));
+    setLoading(false);
+  }
+
+  async function handleCreate() {
+    const code = form.code.trim().toUpperCase() || genCode();
+    if (!code) { setFormErr("Ingresá un código"); return; }
+    setSubmitting(true);
+    setFormErr("");
+    const { ok, error } = await promoAction("create_promo_code", {
+      promoCode: {
+        code,
+        note:         form.note.trim() || null,
+        maxUses:      form.maxUses ? Number(form.maxUses) : null,
+        durationDays: Number(form.durationDays) || 30,
+        expiresAt:    form.expiresAt || null,
+      },
+    });
+    setSubmitting(false);
+    if (!ok) { setFormErr(error ?? "Error al crear"); return; }
+    setForm(BLANK_FORM);
+    setShowForm(false);
+    await loadCodes();
+  }
+
+  async function handleToggle(code: string, active: boolean) {
+    setActing(code);
+    await promoAction(active ? "deactivate_promo_code" : "reactivate_promo_code", { code });
+    setRows(prev => prev.map(r => r.code === code ? { ...r, active: !active } : r));
+    setActing(null);
+  }
+
+  async function handleDelete(code: string) {
+    if (!confirm(`¿Eliminar el código "${code}"? También se borrarán sus usos registrados.`)) return;
+    setActing(code);
+    await promoAction("delete_promo_code", { code });
+    setRows(prev => prev.filter(r => r.code !== code));
+    setActing(null);
+  }
+
+  async function copyCode(code: string) {
+    await navigator.clipboard.writeText(code).catch(() => null);
+    setCopied(code);
+    setTimeout(() => setCopied(null), 1800);
+  }
+
+  async function showUses(code: string) {
+    const { data } = await supabase
+      .from("promo_code_uses")
+      .select("user_id, used_at, profiles(name, email)")
+      .eq("code", code)
+      .order("used_at", { ascending: false });
+    setUsesModal({
+      code,
+      uses: (data ?? []).map(r => ({
+        userId:  r.user_id as string,
+        usedAt:  r.used_at as string,
+        name:    ((r.profiles as unknown as Record<string, unknown>)?.name as string) ?? "—",
+        email:   ((r.profiles as unknown as Record<string, unknown>)?.email as string) ?? "—",
+      })),
+    });
+  }
+
+  const now = new Date();
+
+  if (loading) return <Loader />;
+
+  return (
+    <div>
+      {/* Header + botón crear */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <div style={{ fontSize: 13, color: "var(--text-2)" }}>
+          {rows.length === 0 ? "Sin códigos creados todavía." : `${rows.length} código${rows.length !== 1 ? "s" : ""}`}
+        </div>
+        <button
+          onClick={() => { setShowForm(f => !f); setFormErr(""); setForm(BLANK_FORM); }}
+          style={{
+            padding: "7px 14px", borderRadius: 6, fontSize: 13, fontWeight: 600,
+            background: showForm ? "var(--surface)" : "var(--green)",
+            color: showForm ? "var(--text-2)" : "#fff",
+            border: "1px solid", borderColor: showForm ? "var(--border)" : "var(--green)",
+            cursor: "pointer",
+          }}
+        >
+          {showForm ? "Cancelar" : "+ Crear código"}
+        </button>
+      </div>
+
+      {/* Formulario inline */}
+      {showForm && (
+        <div style={{
+          background: "var(--surface)", border: "1px solid var(--border)",
+          borderRadius: 8, padding: "18px 18px 14px", marginBottom: 16,
+        }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase" as const, letterSpacing: 0.5, marginBottom: 14 }}>
+            Nuevo código
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 16px" }}>
+
+            {/* Código */}
+            <div>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--text-2)", marginBottom: 4 }}>
+                Código <span style={{ color: "var(--text-3)", fontWeight: 400 }}>(vacío = auto)</span>
+              </label>
+              <div style={{ display: "flex", gap: 6 }}>
+                <input
+                  value={form.code}
+                  onChange={e => setForm(f => ({ ...f, code: e.target.value.toUpperCase().replace(/\s/g, "") }))}
+                  placeholder="Ej: CERCAYA30"
+                  style={{ flex: 1, padding: "7px 10px", border: "1px solid var(--border)", borderRadius: 6, fontSize: 13, background: "var(--bg)", color: "var(--text)", outline: "none", fontFamily: "monospace", letterSpacing: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, code: genCode() }))}
+                  title="Generar aleatorio"
+                  style={{ padding: "7px 10px", border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg)", cursor: "pointer", fontSize: 14 }}
+                >🎲</button>
+              </div>
+            </div>
+
+            {/* Nota interna */}
+            <div>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--text-2)", marginBottom: 4 }}>Nota interna</label>
+              <input
+                value={form.note}
+                onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
+                placeholder="Ej: Flyer campaña enero 2025"
+                style={{ width: "100%", padding: "7px 10px", border: "1px solid var(--border)", borderRadius: 6, fontSize: 13, background: "var(--bg)", color: "var(--text)", outline: "none", boxSizing: "border-box" as const }}
+              />
+            </div>
+
+            {/* Duración */}
+            <div>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--text-2)", marginBottom: 4 }}>Duración (días)</label>
+              <input
+                value={form.durationDays}
+                onChange={e => setForm(f => ({ ...f, durationDays: e.target.value.replace(/\D/g, "") }))}
+                inputMode="numeric"
+                placeholder="30"
+                style={{ width: "100%", padding: "7px 10px", border: "1px solid var(--border)", borderRadius: 6, fontSize: 13, background: "var(--bg)", color: "var(--text)", outline: "none", boxSizing: "border-box" as const }}
+              />
+            </div>
+
+            {/* Usos máximos */}
+            <div>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--text-2)", marginBottom: 4 }}>
+                Usos máx. <span style={{ color: "var(--text-3)", fontWeight: 400 }}>(vacío = ilimitado)</span>
+              </label>
+              <input
+                value={form.maxUses}
+                onChange={e => setForm(f => ({ ...f, maxUses: e.target.value.replace(/\D/g, "") }))}
+                inputMode="numeric"
+                placeholder="Ilimitado"
+                style={{ width: "100%", padding: "7px 10px", border: "1px solid var(--border)", borderRadius: 6, fontSize: 13, background: "var(--bg)", color: "var(--text)", outline: "none", boxSizing: "border-box" as const }}
+              />
+            </div>
+
+            {/* Vencimiento */}
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--text-2)", marginBottom: 4 }}>
+                Vence el <span style={{ color: "var(--text-3)", fontWeight: 400 }}>(opcional)</span>
+              </label>
+              <input
+                type="date"
+                value={form.expiresAt}
+                onChange={e => setForm(f => ({ ...f, expiresAt: e.target.value }))}
+                style={{ padding: "7px 10px", border: "1px solid var(--border)", borderRadius: 6, fontSize: 13, background: "var(--bg)", color: "var(--text)", outline: "none" }}
+              />
+            </div>
+          </div>
+
+          {formErr && <div style={{ fontSize: 12, color: "#dc2626", marginTop: 10 }}>{formErr}</div>}
+
+          <div style={{ marginTop: 14, display: "flex", justifyContent: "flex-end" }}>
+            <button
+              onClick={handleCreate}
+              disabled={submitting}
+              style={{
+                padding: "8px 20px", borderRadius: 6, border: "none",
+                background: submitting ? "var(--border)" : "var(--green)",
+                color: submitting ? "var(--text-3)" : "#fff",
+                fontSize: 13, fontWeight: 600, cursor: submitting ? "default" : "pointer",
+              }}
+            >
+              {submitting ? "Creando..." : "Crear código"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Tabla de códigos */}
+      {rows.length > 0 && (
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" as const, fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: "var(--bg)", borderBottom: "1px solid var(--border)" }}>
+                {["Código", "Nota", "Usos", "Duración", "Vence", "Estado", ""].map(h => (
+                  <th key={h} style={{ padding: "10px 12px", textAlign: "left" as const, fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase" as const, letterSpacing: 0.3 }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => {
+                const expired  = !!r.expiresAt && new Date(r.expiresAt) < now;
+                const full     = r.maxUses !== null && r.uses >= r.maxUses;
+                const isLast   = i === rows.length - 1;
+                return (
+                  <tr key={r.code} style={{ borderBottom: isLast ? "none" : "1px solid var(--border)", opacity: !r.active ? 0.55 : 1 }}>
+
+                    {/* Código */}
+                    <td style={{ padding: "10px 12px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontFamily: "monospace", fontWeight: 700, letterSpacing: 1, fontSize: 13 }}>{r.code}</span>
+                        <button
+                          onClick={() => copyCode(r.code)}
+                          title="Copiar"
+                          style={{ padding: "2px 6px", fontSize: 10, border: "1px solid var(--border)", borderRadius: 4, background: "var(--bg)", cursor: "pointer", color: copied === r.code ? "var(--green)" : "var(--text-3)" }}
+                        >
+                          {copied === r.code ? "✓" : "📋"}
+                        </button>
+                      </div>
+                    </td>
+
+                    {/* Nota */}
+                    <td style={{ padding: "10px 12px", color: "var(--text-3)", fontSize: 12, maxWidth: 180 }}>
+                      {r.note ?? <span style={{ opacity: 0.4 }}>—</span>}
+                    </td>
+
+                    {/* Usos */}
+                    <td style={{ padding: "10px 12px" }}>
+                      <button
+                        onClick={() => r.uses > 0 ? showUses(r.code) : null}
+                        style={{
+                          background: "none", border: "none", padding: 0,
+                          cursor: r.uses > 0 ? "pointer" : "default",
+                          fontSize: 13,
+                          color: full ? "#dc2626" : r.uses > 0 ? "var(--green)" : "var(--text-3)",
+                          fontWeight: r.uses > 0 ? 600 : 400,
+                          textDecoration: r.uses > 0 ? "underline" : "none",
+                        }}
+                      >
+                        {r.uses}{r.maxUses !== null ? `/${r.maxUses}` : ""}
+                        {full && " ⚠️"}
+                      </button>
+                    </td>
+
+                    {/* Duración */}
+                    <td style={{ padding: "10px 12px", color: "var(--text-3)", fontSize: 12 }}>
+                      {r.durationDays} días
+                    </td>
+
+                    {/* Vence */}
+                    <td style={{ padding: "10px 12px", fontSize: 12 }}>
+                      {r.expiresAt
+                        ? <span style={{ color: expired ? "#dc2626" : "var(--text)" }}>
+                            {new Date(r.expiresAt).toLocaleDateString("es-AR")}{expired && " ⚠️"}
+                          </span>
+                        : <span style={{ color: "var(--text-3)" }}>Sin vto.</span>
+                      }
+                    </td>
+
+                    {/* Estado */}
+                    <td style={{ padding: "10px 12px" }}>
+                      {r.active
+                        ? <span style={{ fontSize: 11, fontWeight: 600, color: "var(--green)", background: "var(--green-subtle)", padding: "2px 8px", borderRadius: 4, border: "1px solid #c5e8dc" }}>Activo</span>
+                        : <span style={{ fontSize: 11, color: "var(--text-3)", background: "var(--bg)", padding: "2px 8px", borderRadius: 4, border: "1px solid var(--border)" }}>Inactivo</span>
+                      }
+                    </td>
+
+                    {/* Acciones */}
+                    <td style={{ padding: "10px 12px" }}>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <ActionBtn
+                          label={r.active ? "Desactivar" : "Activar"}
+                          color={r.active ? "red" : "green"}
+                          small
+                          loading={acting === r.code}
+                          onClick={() => handleToggle(r.code, r.active)}
+                        />
+                        <ActionBtn
+                          label="Eliminar"
+                          color="red"
+                          small
+                          loading={acting === r.code}
+                          onClick={() => handleDelete(r.code)}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {rows.length === 0 && !showForm && (
+        <Empty icon="🎟️" text="Sin códigos creados. Creá el primero con el botón de arriba." />
+      )}
+
+      {/* Modal de usos */}
+      {usesModal && (
+        <div
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            zIndex: 9999, padding: 16,
+          }}
+          onClick={() => setUsesModal(null)}
+        >
+          <div
+            style={{
+              background: "var(--surface)", border: "1px solid var(--border)",
+              borderRadius: 10, padding: 20, maxWidth: 480, width: "100%",
+              maxHeight: "80vh", overflowY: "auto",
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700 }}>Usos del código</div>
+                <div style={{ fontFamily: "monospace", fontSize: 15, fontWeight: 800, letterSpacing: 1, color: "var(--green)", marginTop: 2 }}>{usesModal.code}</div>
+              </div>
+              <button onClick={() => setUsesModal(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}>×</button>
+            </div>
+            {usesModal.uses.length === 0
+              ? <div style={{ fontSize: 13, color: "var(--text-3)", textAlign: "center", padding: "2rem 0" }}>Sin usos registrados</div>
+              : (
+                <table style={{ width: "100%", borderCollapse: "collapse" as const, fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                      {["Usuario", "Email", "Fecha"].map(h => (
+                        <th key={h} style={{ padding: "8px 10px", textAlign: "left" as const, fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase" as const }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {usesModal.uses.map((u, i) => (
+                      <tr key={i} style={{ borderBottom: i < usesModal.uses.length - 1 ? "1px solid var(--border)" : "none" }}>
+                        <td style={{ padding: "8px 10px", fontWeight: 500 }}>
+                          <Link href={`/vendedor/${u.userId}`} style={{ color: "var(--green)" }}>{u.name}</Link>
+                        </td>
+                        <td style={{ padding: "8px 10px", fontSize: 11, color: "var(--text-3)" }}>{u.email}</td>
+                        <td style={{ padding: "8px 10px", fontSize: 11, color: "var(--text-3)" }}>
+                          {new Date(u.usedAt).toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )
+            }
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface PromoUseRow { userId: string; usedAt: string; name: string; email: string; }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

@@ -6,7 +6,7 @@ import Navbar from "../../components/Navbar";
 import BotonPago from "../../components/BotonPago";
 import { getCurrentUser } from "../../lib/auth";
 import { getProductById } from "../../lib/storage";
-import { PRECIOS } from "../../lib/pagos";
+import { PRECIOS, getPreciosDB, type Precios } from "../../lib/pagos";
 
 export default function DestacarPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -17,6 +17,11 @@ export default function DestacarPage({ params }: { params: Promise<{ id: string 
   const [productEmoji, setProductEmoji] = useState("📦");
   const [featured,     setFeatured]     = useState(false);
   const [ready,        setReady]        = useState(false);
+  const [precios,      setPrecios]      = useState<Precios>({ ...PRECIOS });
+
+  useEffect(() => {
+    getPreciosDB().then(setPrecios);
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -102,7 +107,7 @@ export default function DestacarPage({ params }: { params: Promise<{ id: string 
                   productId={Number(id)}
                   label="Destacar 7 días"
                   descripcion="Pago único — se activa de inmediato"
-                  precio={PRECIOS.destacar_7}
+                  precio={precios.destacar_7}
                   style={{ background: "linear-gradient(90deg,#f59e0b,#d97706)" }}
                 />
                 <BotonPago
@@ -111,7 +116,7 @@ export default function DestacarPage({ params }: { params: Promise<{ id: string 
                   productId={Number(id)}
                   label="Destacar 30 días"
                   descripcion="Mejor valor — pago único"
-                  precio={PRECIOS.destacar_30}
+                  precio={precios.destacar_30}
                   style={{ background: "linear-gradient(90deg,#b45309,#92400e)" }}
                 />
               </div>

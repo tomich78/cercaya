@@ -6,7 +6,7 @@ import Navbar from "./components/Navbar";
 import ProductCard from "./components/ProductCard";
 import ProductCardSkeleton from "./components/ProductCardSkeleton";
 import AdSlot from "./components/AdSlot";
-import { categories } from "./data";
+import { LISTING_TYPES, PRODUCT_CATEGORIES, SERVICE_CATEGORIES, PROPERTY_TYPES, VEHICLE_TYPES, type ListingType } from "./data";
 import { getLocalProducts, type LocalProduct } from "./lib/storage";
 import { getCurrentUser, type LocalUser } from "./lib/auth";
 import { haversineKm, formatDistance } from "./lib/geo";
@@ -26,6 +26,7 @@ function parsePrice(str: string): number {
 function HomeInner() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") ?? "";
+  const [activeType,     setActiveType]     = useState<"all" | ListingType>("all");
   const [activeCategory, setActiveCategory] = useState("Todos");
   const [search,         setSearch]         = useState(initialQuery);
   usePageTitle(search ? `"${search}" — Búsqueda` : undefined);
@@ -120,7 +121,7 @@ function HomeInner() {
     // Resetear estado de alerta cuando cambia la búsqueda
     setAlertSaved(false);
     setAlertChecked("");
-  }, [activeCategory, search, priceMin, priceMax, condition, sortBy, maxDist]);
+  }, [activeCategory, search, priceMin, priceMax, condition, sortBy, maxDist, activeType]);
 
   // IntersectionObserver para cargar más
   const handleObserver = useCallback((entries: IntersectionObserverEntry[]) => {
@@ -159,6 +160,13 @@ function HomeInner() {
       })
     : baseProducts.map(p => ({ ...p, _km: Infinity }));
 
+  // Categorías según tipo activo
+  const activeCategories: string[] =
+    activeType === "service"  ? SERVICE_CATEGORIES :
+    activeType === "property" ? PROPERTY_TYPES :
+    activeType === "vehicle"  ? VEHICLE_TYPES :
+    PRODUCT_CATEGORIES;
+
   // Contar filtros activos (sin contar el sort)
   const activeFilterCount = [
     priceMin  !== "",
@@ -169,6 +177,7 @@ function HomeInner() {
 
   const filtered = allProducts
     .filter(p => {
+      const matchType   = activeType === "all" || (p.listingType ?? "product") === activeType;
       const matchCat    = activeCategory === "Todos" || p.category === activeCategory;
       const q           = search.toLowerCase();
       const matchSearch = !q || p.title.toLowerCase().includes(q)
@@ -184,7 +193,7 @@ function HomeInner() {
       const matchDist   = maxDist === "todos" || !hasUserLocation || p._km > 999
         ? true
         : p._km <= parseInt(maxDist);
-      return matchCat && matchSearch && matchMin && matchMax && matchCond && matchDist;
+      return matchType && matchCat && matchSearch && matchMin && matchMax && matchCond && matchDist;
     })
     .sort((a, b) => {
       if (sortBy === "cercano")     return a._km - b._km;
@@ -322,9 +331,46 @@ function HomeInner() {
           </div>
         </div>
 
-        {/* Categorías */}
+        {/* Tipo de publicación — tabs */}
+        <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+          <button
+            onClick={() => { setActiveType("all"); setActiveCategory("Todos"); }}
+            style={{
+              padding: "6px 14px", borderRadius: 999,
+              border: "1px solid",
+              borderColor: activeType === "all" ? "var(--green)" : "var(--border)",
+              background:  activeType === "all" ? "var(--green)" : "var(--surface)",
+              color:       activeType === "all" ? "#fff" : "var(--text-2)",
+              fontWeight:  activeType === "all" ? 700 : 400,
+              fontSize: 13, cursor: "pointer", transition: "all 0.12s",
+            }}
+          >
+            Todos
+          </button>
+          {LISTING_TYPES.map(t => (
+            <button
+              key={t.value}
+              onClick={() => { setActiveType(t.value); setActiveCategory("Todos"); }}
+              style={{
+                padding: "6px 14px", borderRadius: 999,
+                border: "1px solid",
+                borderColor: activeType === t.value ? "var(--green)" : "var(--border)",
+                background:  activeType === t.value ? "var(--green)" : "var(--surface)",
+                color:       activeType === t.value ? "#fff" : "var(--text-2)",
+                fontWeight:  activeType === t.value ? 700 : 400,
+                fontSize: 13, cursor: "pointer", transition: "all 0.12s",
+                display: "flex", alignItems: "center", gap: 5,
+              }}
+            >
+              <span>{t.emoji}</span>
+              {t.label}s
+            </button>
+          ))}
+        </div>
+
+        {/* Categorías — dinámicas según el tipo */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 6px", marginBottom: 12 }}>
-          {categories.map(cat => (
+          {activeCategories.map(cat => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}

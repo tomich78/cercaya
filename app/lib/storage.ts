@@ -1,4 +1,7 @@
 import { supabase } from "./supabase";
+import type { ListingType } from "../data";
+
+export type { ListingType };
 
 export interface LocalProduct {
   id: number;
@@ -24,6 +27,9 @@ export interface LocalProduct {
   delivery?: "retiro" | "envio" | "ambos";  // forma de entrega
   phone?: string;                // WhatsApp de contacto
   stock?: number;                // unidades disponibles
+  listingType?: ListingType;     // tipo de publicación
+  attributes?: Record<string, unknown>; // campos específicos del tipo
+  expiresAt?: string;            // fecha de vencimiento de la publicación
   sellerId: number;
   userId?: string;
   createdAt: string;
@@ -58,13 +64,16 @@ function rowToProduct(row: Record<string, unknown>): LocalProduct {
     delivery:      (row.delivery as "retiro" | "envio" | "ambos") ?? "retiro",
     phone:         row.phone as string | undefined,
     stock:         (row.stock as number) ?? 1,
+    listingType:   (row.listing_type as ListingType) ?? "product",
+    attributes:    (row.attributes as Record<string, unknown>) ?? {},
+    expiresAt:     row.expires_at as string | undefined,
     sellerId:      0,
     userId:        row.user_id as string | undefined,
     createdAt:     row.created_at as string,
   };
 }
 
-export async function getLocalProducts(options?: { includeSold?: boolean }): Promise<LocalProduct[]> {
+export async function getLocalProducts(options?: { includeSold?: boolean; includeExpired?: boolean }): Promise<LocalProduct[]> {
   let query = supabase
     .from("products")
     .select("*")
@@ -74,6 +83,11 @@ export async function getLocalProducts(options?: { includeSold?: boolean }): Pro
   // Por defecto excluir productos vendidos del feed principal
   if (!options?.includeSold) {
     query = query.eq("sold", false);
+  }
+
+  // Por defecto excluir publicaciones vencidas del feed
+  if (!options?.includeExpired) {
+    query = query.or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
   }
 
   const { data, error } = await query;
@@ -141,10 +155,13 @@ export async function saveLocalProduct(
     images:      product.images ?? [],
     lat:         product.lat ?? null,
     lng:         product.lng ?? null,
-    negotiable:  product.negotiable ?? false,
-    delivery:    product.delivery ?? "retiro",
-    phone:       product.phone ?? null,
-    stock:       product.stock ?? 1,
+    negotiable:    product.negotiable ?? false,
+    delivery:      product.delivery ?? "retiro",
+    phone:         product.phone ?? null,
+    stock:         product.stock ?? 1,
+    listing_type:  product.listingType ?? "product",
+    attributes:    product.attributes ?? {},
+    expires_at:    new Date(Date.now() + 60 * 86_400_000).toISOString(),
   };
   const { data, error } = await supabase.from("products").insert(row).select().single();
   if (error || !data) throw new Error(error?.message ?? "Error al guardar producto");
@@ -174,6 +191,8 @@ export async function updateProduct(
     lng: number | null;
     pinned: boolean;
     stock: number;
+    attributes: Record<string, unknown>;
+    expiresAt: string | null;
   }>,
 ): Promise<void> {
   const row: Record<string, unknown> = {};
@@ -193,7 +212,14 @@ export async function updateProduct(
   if (updates.lng           !== undefined) row.lng            = updates.lng;
   if (updates.pinned        !== undefined) row.pinned         = updates.pinned;
   if (updates.stock         !== undefined) row.stock          = updates.stock;
+  if (updates.attributes    !== undefined) row.attributes     = updates.attributes;
+  if (updates.expiresAt     !== undefined) row.expires_at     = updates.expiresAt;
   await supabase.from("products").update(row).eq("id", id);
+}
+
+export async function renewProduct(id: number): Promise<void> {
+  const newExpiry = new Date(Date.now() + 60 * 86_400_000).toISOString();
+  await supabase.from("products").update({ expires_at: newExpiry }).eq("id", id);
 }
 
 // ── Imágenes ──────────────────────────────────────────────────

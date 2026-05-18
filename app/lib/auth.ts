@@ -143,6 +143,34 @@ function friendlyAuthError(msg: string): string {
 
 // ── Auth ─────────────────────────────────────────────────────
 
+export async function resetPasswordForEmail(
+  email: string,
+): Promise<{ error: string | null }> {
+  const redirectTo = `${window.location.origin}/auth/reset-password`;
+  const { error } = await supabase.auth.resetPasswordForEmail(
+    email.trim().toLowerCase(),
+    { redirectTo },
+  );
+  if (error) return { error: friendlyAuthError(error.message) };
+  return { error: null };
+}
+
+export async function updatePassword(
+  newPassword: string,
+): Promise<{ error: string | null }> {
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) return { error: friendlyAuthError(error.message) };
+  return { error: null };
+}
+
+export async function loginWithGoogle(redirectTo = "/"): Promise<void> {
+  const callbackUrl = `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`;
+  await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: callbackUrl },
+  });
+}
+
 export async function register(
   name: string,
   email: string,

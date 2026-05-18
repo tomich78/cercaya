@@ -6,6 +6,8 @@ import { isFavorite, toggleFavorite } from "../lib/favorites";
 import { getCurrentUser } from "../lib/auth";
 import { useToast } from "./ToastProvider";
 
+type ListingType = "product" | "service" | "property" | "vehicle";
+
 interface Product {
   id: number;
   emoji: string;
@@ -21,6 +23,8 @@ interface Product {
   sellerIsBusiness?: boolean;
   sellerCuitVerified?: boolean;
   sellerBusinessSlug?: string;
+  listingType?: ListingType;
+  attributes?: Record<string, unknown>;
 }
 
 export default function ProductCard({ product }: { product: Product }) {
@@ -104,8 +108,8 @@ export default function ProductCard({ product }: { product: Product }) {
             product.emoji
           )}
 
-          {/* Badge condición */}
-          {product.condition && (
+          {/* Badge condición (solo para productos) */}
+          {product.condition && (!product.listingType || product.listingType === "product") && (
             <div style={{
               position: "absolute", top: 8, left: 8,
               fontSize: 10, fontWeight: 700,
@@ -115,6 +119,26 @@ export default function ProductCard({ product }: { product: Product }) {
               color: "#fff",
             }}>
               {product.condition}
+            </div>
+          )}
+
+          {/* Badge tipo (para no-productos) */}
+          {product.listingType && product.listingType !== "product" && (
+            <div style={{
+              position: "absolute", top: 8, left: 8,
+              fontSize: 10, fontWeight: 700,
+              letterSpacing: 0.3,
+              padding: "2px 8px", borderRadius: 4,
+              background: product.listingType === "service"
+                ? "rgba(37,99,235,0.85)"
+                : product.listingType === "property"
+                ? "rgba(124,58,237,0.85)"
+                : "rgba(220,38,38,0.85)",
+              color: "#fff",
+            }}>
+              {product.listingType === "service"  ? "🔧 Servicio" :
+               product.listingType === "property" ? "🏠 Inmueble" :
+               "🚗 Vehículo"}
             </div>
           )}
 
@@ -155,9 +179,41 @@ export default function ProductCard({ product }: { product: Product }) {
           <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4, color: "var(--text)", lineHeight: 1.35 }}>
             {product.title}
           </div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: "var(--green)", marginBottom: 6, letterSpacing: -0.3 }}>
+          <div style={{ fontSize: 15, fontWeight: 600, color: "var(--green)", marginBottom: 4, letterSpacing: -0.3 }}>
             {product.price}
           </div>
+
+          {/* Atributos clave según tipo */}
+          {product.listingType === "service" && product.attributes && (
+            <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4, display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {product.attributes.modalidad === "presencial" && <span>📍 Presencial</span>}
+              {product.attributes.modalidad === "remoto"     && <span>💻 Remoto</span>}
+              {product.attributes.modalidad === "ambos"      && <span>📍/💻 Presencial o remoto</span>}
+              {!!product.attributes.precioTipo && product.attributes.precioTipo !== "convenir" && (
+                <span>· por {product.attributes.precioTipo as string}</span>
+              )}
+              {product.attributes.precioTipo === "convenir" && <span>· A convenir</span>}
+            </div>
+          )}
+          {product.listingType === "property" && product.attributes && (
+            <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4, display: "flex", gap: 4, flexWrap: "wrap" }}>
+              {!!product.attributes.operacion && (
+                <span style={{ fontWeight: 600, textTransform: "capitalize" as const }}>
+                  {product.attributes.operacion === "alquiler_temp" ? "Alq. temporal" : product.attributes.operacion as string}
+                </span>
+              )}
+              {!!product.attributes.superficie && <span>· {product.attributes.superficie as string} m²</span>}
+              {!!product.attributes.ambientes  && <span>· {product.attributes.ambientes as string} amb.</span>}
+            </div>
+          )}
+          {product.listingType === "vehicle" && product.attributes && (
+            <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4, display: "flex", gap: 4, flexWrap: "wrap" }}>
+              {!!product.attributes.marca  && <span>{product.attributes.marca as string}</span>}
+              {!!product.attributes.anio   && <span>· {product.attributes.anio as string}</span>}
+              {!!product.attributes.km     && <span>· {Number(product.attributes.km).toLocaleString("es-AR")} km</span>}
+            </div>
+          )}
+
           <div style={{ fontSize: 11, color: "var(--text-3)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span>{product.location}</span>
             <span style={{ color: "var(--green)", fontWeight: 500 }}>{product.distance}</span>
