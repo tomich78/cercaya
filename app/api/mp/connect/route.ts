@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  const baseUrl     = process.env.NEXT_PUBLIC_SITE_URL ?? "https://cercaya-gamma.vercel.app";
+  const baseUrl     = process.env.NEXT_PUBLIC_SITE_URL ?? "https://estamoscerca.com.ar";
   const appId       = process.env.MP_APP_ID!;
   const redirectUri = `${baseUrl}/api/mp/callback`;
 

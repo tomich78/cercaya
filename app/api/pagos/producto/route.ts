@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
 
     const client     = new MercadoPagoConfig({ accessToken: seller.mp_access_token });
     const preference = new Preference(client);
-    const baseUrl    = process.env.NEXT_PUBLIC_SITE_URL ?? "https://cercaya-gamma.vercel.app";
+    const baseUrl    = process.env.NEXT_PUBLIC_SITE_URL ?? "https://estamoscerca.com.ar";
 
     const result = await preference.create({
       body: {

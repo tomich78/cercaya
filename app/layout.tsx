@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "EstamosCerca — Compra y vende cerca tuyo",
     description: "Comprá y vendé productos cerca tuyo. Conectamos vecinos del mismo barrio sin envíos ni comisiones.",
-    url: "https://cercaya-gamma.vercel.app",
+    url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://estamoscerca.com.ar",
     siteName: "EstamosCerca",
     images: [{ url: "/Logo.png", width: 512, height: 512, alt: "EstamosCerca" }],
     locale: "es_AR",
