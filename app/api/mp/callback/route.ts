@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   const code   = searchParams.get("code");
   const userId = searchParams.get("state"); // pasamos userId como state en la URL de autorización
   const baseUrl      = process.env.NEXT_PUBLIC_SITE_URL ?? "https://estamoscerca.com.ar";
-  const appId        = process.env.MP_APP_ID            ?? "861893684920466";
+  const appId        = process.env.MP_APP_ID ?? "861893684920466";
   const clientSecret = process.env.MP_CLIENT_SECRET ?? "";
 
   if (!code || !userId) {

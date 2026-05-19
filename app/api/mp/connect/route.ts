@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
   }
 
   const baseUrl     = process.env.NEXT_PUBLIC_SITE_URL ?? "https://estamoscerca.com.ar";
-  const appId       = process.env.MP_APP_ID!;
+  const appId       = process.env.MP_APP_ID ?? "861893684920466";
   const redirectUri = `${baseUrl}/api/mp/callback`;
 
   const codeVerifier  = generateCodeVerifier();
