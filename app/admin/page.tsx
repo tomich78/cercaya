@@ -3,12 +3,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
-import { getCurrentUser } from "../lib/auth";
 import { supabase } from "../lib/supabase";
 import { PRECIOS, LABELS, type TipoPago } from "../lib/pagos";
-
-// Email solo se usa para la redirección UI (guard de UX). La auth real es JWT en el servidor.
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "";
 
 async function adminAction(action: string, userId?: string, productId?: number) {
   // Obtener el JWT de Supabase para autenticar la request en el servidor
@@ -61,8 +57,13 @@ export default function AdminPage() {
 
   useEffect(() => {
     (async () => {
-      const u = await getCurrentUser();
-      if (!u || u.email !== ADMIN_EMAIL) { router.replace("/"); return; }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { router.replace("/"); return; }
+      const res = await fetch("/api/admin", {
+        headers: { "Authorization": `Bearer ${session.access_token}` },
+      });
+      const { isAdmin } = await res.json() as { isAdmin: boolean };
+      if (!isAdmin) { router.replace("/"); return; }
       setReady(true);
       loadStats();
     })();

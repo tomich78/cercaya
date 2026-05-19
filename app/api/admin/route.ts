@@ -16,6 +16,11 @@ async function verifyAdmin(req: NextRequest): Promise<boolean> {
   return user.email === ADMIN_EMAIL;
 }
 
+export async function GET(req: NextRequest) {
+  const isAdmin = await verifyAdmin(req);
+  return NextResponse.json({ isAdmin });
+}
+
 export async function POST(req: NextRequest) {
   if (!await verifyAdmin(req)) {
     return unauthorized();
@@ -65,9 +70,49 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: true });
 
       // ── Usuarios ──────────────────────────────────────────────
-      case "delete_user":
+      case "delete_user": {
+        // 1. Mensajes enviados por el usuario (en cualquier conversación)
+        await supabaseAdmin.from("messages").delete().eq("sender_id", userId);
+
+        // 2. Mensajes en conversaciones donde el usuario es comprador o vendedor
+        const { data: convos } = await supabaseAdmin
+          .from("conversations")
+          .select("id")
+          .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`);
+        if (convos && convos.length > 0) {
+          const ids = convos.map((c: { id: number }) => c.id);
+          await supabaseAdmin.from("messages").delete().in("conversation_id", ids);
+        }
+
+        // 3. Conversaciones donde participa
+        await supabaseAdmin
+          .from("conversations")
+          .delete()
+          .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`);
+
+        // 4. Reviews dadas o recibidas
+        await supabaseAdmin
+          .from("reviews")
+          .delete()
+          .or(`reviewer_id.eq.${userId},reviewed_id.eq.${userId}`);
+
+        // 5. Usos de códigos promocionales
+        await supabaseAdmin.from("promo_code_uses").delete().eq("user_id", userId);
+
+        // 6. Banners
+        await supabaseAdmin.from("banners").delete().eq("user_id", userId);
+
+        // 7. Publicaciones
+        await supabaseAdmin.from("products").delete().eq("user_id", userId);
+
+        // 8. Perfil
+        await supabaseAdmin.from("profiles").delete().eq("id", userId);
+
+        // 9. Usuario de auth (último paso)
         await supabaseAdmin.auth.admin.deleteUser(userId);
+
         return NextResponse.json({ ok: true });
+      }
 
       // ── Códigos promocionales ────────────────────────────────
       case "create_promo_code": {
