@@ -18,7 +18,22 @@ async function verifyAdmin(req: NextRequest): Promise<boolean> {
 
 export async function GET(req: NextRequest) {
   const isAdmin = await verifyAdmin(req);
-  return NextResponse.json({ isAdmin });
+  if (!isAdmin) return NextResponse.json({ isAdmin: false });
+
+  const action = new URL(req.url).searchParams.get("action");
+
+  // GET /api/admin?action=users  →  lista de usuarios (bypasa RLS)
+  if (action === "users") {
+    const { data, error } = await supabaseAdmin
+      .from("profiles")
+      .select("id, name, email, location, is_business, dni_status, created_at")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ users: data ?? [] });
+  }
+
+  return NextResponse.json({ isAdmin: true });
 }
 
 export async function POST(req: NextRequest) {

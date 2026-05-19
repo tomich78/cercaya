@@ -472,12 +472,13 @@ function UsuariosTab({ acting, setActing }: { acting: string | null; setActing: 
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("id, name, email, location, is_business, dni_status, created_at")
-        .order("created_at", { ascending: false })
-        .limit(100);
-      setRows((data ?? []).map(r => ({
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await fetch("/api/admin?action=users", {
+        headers: { "Authorization": `Bearer ${session.access_token}` },
+      });
+      const json = await res.json() as { users?: Record<string, unknown>[] };
+      setRows((json.users ?? []).map(r => ({
         id: r.id as string, name: r.name as string,
         email: (r.email as string) ?? "—",
         location: (r.location as string) ?? "—",
@@ -550,7 +551,7 @@ function UsuariosTab({ acting, setActing }: { acting: string | null; setActing: 
           </tbody>
         </table>
       </div>
-      <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 8 }}>Mostrando hasta 100 usuarios más recientes.</div>
+      <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 8 }}>Mostrando hasta 200 usuarios más recientes.</div>
     </div>
   );
 }
