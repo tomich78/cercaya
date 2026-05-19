@@ -38,15 +38,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${baseUrl}/perfil?mp=error`);
   }
 
-  // Leer el code_verifier guardado en la cookie por /api/mp/connect
-  const codeVerifier = req.cookies.get("mp_code_verifier")?.value;
-  console.log("MP callback — code_verifier present:", !!codeVerifier);
-
-  const redirect = (path: string) => {
-    const res = NextResponse.redirect(`${baseUrl}${path}`);
-    res.cookies.delete("mp_code_verifier");
-    return res;
-  };
+  const redirect = (path: string) => NextResponse.redirect(`${baseUrl}${path}`);
 
   try {
     const params = new URLSearchParams({
@@ -55,13 +47,10 @@ export async function GET(req: NextRequest) {
       redirect_uri: `${baseUrl}/api/mp/callback`,
     });
 
-    // PKCE: incluir code_verifier si existe
-    if (codeVerifier) params.set("code_verifier", codeVerifier);
-
     // Credenciales via Basic Auth header (RFC 6749 §2.3.1)
     const basicAuth = Buffer.from(`${appId}:${clientSecret ?? ""}`).toString("base64");
 
-    console.log("MP token exchange — usando Basic Auth header, has_verifier:", !!codeVerifier);
+    console.log("MP token exchange — usando Basic Auth header");
 
     const res = await fetch("https://api.mercadopago.com/oauth/token", {
       method: "POST",
