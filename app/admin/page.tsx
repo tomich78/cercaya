@@ -473,19 +473,28 @@ function UsuariosTab({ acting, setActing }: { acting: string | null; setActing: 
   useEffect(() => {
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      const res = await fetch("/api/admin?action=users", {
-        headers: { "Authorization": `Bearer ${session.access_token}` },
-      });
-      const json = await res.json() as { users?: Record<string, unknown>[] };
-      setRows((json.users ?? []).map(r => ({
-        id: r.id as string, name: r.name as string,
-        email: (r.email as string) ?? "—",
-        location: (r.location as string) ?? "—",
-        isBusiness: (r.is_business as boolean) ?? false,
-        dniStatus: (r.dni_status as string) ?? "none",
-        createdAt: r.created_at as string,
-      })));
+      if (!session) { setLoading(false); return; }
+      try {
+        const res = await fetch("/api/admin?action=users", {
+          headers: { "Authorization": `Bearer ${session.access_token}` },
+        });
+        if (!res.ok) {
+          console.error("Admin users error:", res.status, await res.text());
+          setLoading(false);
+          return;
+        }
+        const json = await res.json() as { users?: Record<string, unknown>[] };
+        setRows((json.users ?? []).map(r => ({
+          id: r.id as string, name: (r.name as string) ?? "—",
+          email: (r.email as string) ?? "—",
+          location: (r.location as string) ?? "—",
+          isBusiness: (r.is_business as boolean) ?? false,
+          dniStatus: (r.dni_status as string) ?? "none",
+          createdAt: (r.created_at as string) ?? "",
+        })));
+      } catch (e) {
+        console.error("Admin users fetch error:", e);
+      }
       setLoading(false);
     })();
   }, []);

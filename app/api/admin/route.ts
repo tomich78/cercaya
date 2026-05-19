@@ -26,10 +26,13 @@ export async function GET(req: NextRequest) {
   if (action === "users") {
     const { data, error } = await supabaseAdmin
       .from("profiles")
-      .select("id, name, email, location, is_business, dni_status, created_at")
+      .select("*")
       .order("created_at", { ascending: false })
       .limit(200);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      console.error("Admin users query error:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
     return NextResponse.json({ users: data ?? [] });
   }
 
