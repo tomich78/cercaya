@@ -28,8 +28,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Parámetros incompletos" }, { status: 400 });
     }
 
-    // Solo el comprador puede crear un link de pago para sí mismo
-    if (authUser.id !== buyerId) {
+    // Solo el vendedor puede generar un link de pago para su producto
+    if (authUser.id !== sellerId) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
