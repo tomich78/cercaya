@@ -1,5 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useCallback, Suspense } from "react";
+import { getRecentSearches, saveRecentSearch, removeRecentSearch, clearRecentSearches } from "./lib/recentSearches";
+import { getViewedCategories } from "./lib/viewedProducts";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Navbar from "./components/Navbar";
@@ -55,6 +57,10 @@ function HomeInner() {
     browserLat: number; browserLng: number;
   } | null>(null);
 
+  // Búsquedas recientes y categorías visitadas (personalizacion)
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [viewedCats,     setViewedCats]     = useState<string[]>([]);
+
   // Paginación
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const sentinelRef    = useRef<HTMLDivElement>(null);
@@ -77,6 +83,23 @@ function HomeInner() {
     setShowOnboarding(false);
     try { localStorage.setItem("estamosCerca_onboarded", "1"); } catch { /* */ }
   }
+
+  // Cargar búsquedas recientes y categorías visitadas desde localStorage
+  useEffect(() => {
+    setRecentSearches(getRecentSearches());
+    setViewedCats(getViewedCategories());
+  }, []);
+
+  // Guardar búsqueda con debounce de 1.5s cuando hay al menos 2 caracteres
+  useEffect(() => {
+    const q = search.trim();
+    if (!q || q.length < 2) return;
+    const timer = setTimeout(() => {
+      const updated = saveRecentSearch(q);
+      setRecentSearches(updated);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   useEffect(() => {
     getLocalProducts().then(setLocalProducts);
@@ -330,6 +353,46 @@ function HomeInner() {
             )}
           </div>
         </div>
+
+        {/* Búsquedas recientes — chips debajo del hero cuando el buscador está vacío */}
+        {!search && recentSearches.length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", letterSpacing: 0.3, textTransform: "uppercase", flexShrink: 0 }}>
+              Recientes:
+            </span>
+            {recentSearches.map(s => (
+              <span
+                key={s}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                  background: "var(--surface)", border: "1px solid var(--border)",
+                  borderRadius: 999, padding: "4px 10px",
+                  fontSize: 12,
+                }}
+              >
+                <button
+                  onClick={() => setSearch(s)}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-2)", fontSize: 12, padding: 0, fontFamily: "inherit", lineHeight: 1 }}
+                >
+                  🕐 {s}
+                </button>
+                <button
+                  onClick={() => setRecentSearches(removeRecentSearch(s))}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: 15, padding: "0 0 0 2px", lineHeight: 1 }}
+                  title="Eliminar"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+            <button
+              onClick={() => { clearRecentSearches(); setRecentSearches([]); }}
+              style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", marginLeft: 2, textDecoration: "underline" }}
+            >
+              Borrar todo
+            </button>
+          </div>
+        )}
 
         {/* Tipo de publicación — tabs */}
         <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
@@ -641,6 +704,54 @@ function HomeInner() {
             )}
           </div>
         )}
+
+        {/* Para vos — productos de categorías que el usuario visitó */}
+        {(() => {
+          if (search || loading || activeCategory !== "Todos" || activeType !== "all") return null;
+          const paraVos = allProducts
+            .filter(p => viewedCats.includes(p.category) && !p.sold && p.userId !== currentUser?.id)
+            .sort((a, b) => viewedCats.indexOf(a.category) - viewedCats.indexOf(b.category))
+            .slice(0, 10);
+          if (!paraVos.length) return null;
+          return (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: -0.3 }}>✨ Para vos</div>
+                <div style={{ fontSize: 11, color: "var(--text-3)" }}>Basado en lo que viste</div>
+              </div>
+              <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, scrollbarWidth: "none" as const }}>
+                {paraVos.map(p => (
+                  <Link key={p.id} href={`/producto/${p.id}`} style={{ textDecoration: "none", flexShrink: 0, display: "block" }}>
+                    <div
+                      style={{
+                        width: 144, background: "var(--surface)", border: "1px solid var(--border)",
+                        borderRadius: 10, overflow: "hidden", transition: "border-color 0.12s",
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.borderColor = "var(--text-3)")}
+                      onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--border)")}
+                    >
+                      <div style={{ height: 90, background: p.bg, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                        {p.images?.[0]
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          ? <img src={p.images[0]} alt={p.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          : <span style={{ fontSize: 32 }}>{p.emoji}</span>
+                        }
+                      </div>
+                      <div style={{ padding: "8px 10px" }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {p.title}
+                        </div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
+                          {p.price}
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Results header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>

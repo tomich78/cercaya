@@ -9,6 +9,7 @@ import { getOrCreateConversation } from "../../lib/messages";
 import { supabase } from "../../lib/supabase";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { useToast } from "../../components/ToastProvider";
+import { trackProductView } from "../../lib/viewedProducts";
 
 export default function ProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -33,10 +34,13 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
       const cu = await getCurrentUser();
       setCurrentUser(cu);
 
-      // Incrementar vistas (solo si no es el dueño del producto)
+      // Incrementar vistas y registrar categoría visitada (solo si no es el dueño)
       if (found && "userId" in found && found.userId) {
         const isOwner = cu?.id === found.userId;
-        if (!isOwner) incrementProductViews(found.id);
+        if (!isOwner) {
+          incrementProductViews(found.id);
+          trackProductView(found.category, String(found.id));
+        }
       }
 
       if (found && "userId" in found && found.userId) {

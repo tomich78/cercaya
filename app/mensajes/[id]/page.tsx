@@ -1,5 +1,5 @@
 "use client";
-import { use, useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { use, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "../../components/Navbar";
@@ -550,6 +550,8 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   const [text,        setText]        = useState("");
   const [ready,       setReady]       = useState(false);
   const [payPanel,    setPayPanel]    = useState(false);
+  const [sending,     setSending]     = useState(false);
+  const userRef = useRef<LocalUser | null>(null);
 
   const titleOtherName = conv ? (conv.buyerId === user?.id ? conv.sellerName : conv.buyerName) : undefined;
   usePageTitle(titleOtherName ? `Chat con ${titleOtherName}` : "Mensajes");
@@ -561,6 +563,7 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
       const c = await getConversationById(Number(id));
       if (!c) { router.replace("/mensajes"); return; }
       setUser(u);
+      userRef.current = u;
       setConv(c);
       setMessages(await getMessages(c.id));
       await markConversationRead(c.id, u.id);
@@ -619,7 +622,18 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
           metadata:       (data.metadata as Message["metadata"]) ?? undefined,
           createdAt:      data.created_at as string,
         };
-        setMessages(prev => prev.some(m => m.id === incoming.id) ? prev : [...prev, incoming]);
+        const currentUserId = userRef.current?.id;
+        setMessages(prev => {
+          // Eliminar placeholder optimista propio cuando llega el mensaje real del servidor
+          const base = incoming.senderId === currentUserId
+            ? prev.filter(m => m.id > 0)
+            : prev;
+          return base.some(m => m.id === incoming.id) ? base : [...base, incoming];
+        });
+        // Marcar como leído si el mensaje lo envió el otro usuario (chat abierto)
+        if (incoming.senderId !== currentUserId && currentUserId && conv) {
+          markConversationRead(conv.id, currentUserId);
+        }
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -678,20 +692,48 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
   }, [messages]);
 
   async function handleSend() {
-    if (!text.trim() || !user || !conv) return;
-    await sendMessage(conv.id, user.id, user.initials, text);
-    await markConversationRead(conv.id, user.id);
+    if (!text.trim() || !user || !conv || sending) return;
+    const tempText = text.trim();
+    setSending(true);
     setText("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
-    setMessages(await getMessages(conv.id));
-    setTimeout(() => scrollToBottom(true), 50);
+    if (conv) sessionStorage.removeItem(`estamosCerca_draft_${conv.id}`);
+
+    // Mensaje optimista — se muestra de inmediato con id negativo temporal
+    const optimisticId = -Date.now();
+    const optimisticMsg: Message = {
+      id:             optimisticId,
+      conversationId: conv.id,
+      senderId:       user.id,
+      senderInitials: user.initials,
+      text:           tempText,
+      type:           "text",
+      createdAt:      new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, optimisticMsg]);
+    scrollToBottom(true);
+
+    try {
+      await sendMessage(conv.id, user.id, user.initials, tempText);
+      await markConversationRead(conv.id, user.id);
+      // El realtime se encarga de reemplazar el optimista con el mensaje real
+    } catch {
+      // Error: eliminar optimista y restaurar texto
+      setMessages(prev => prev.filter(m => m.id !== optimisticId));
+      setText(tempText);
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+        textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 180)}px`;
+      }
+    } finally {
+      setSending(false);
+    }
   }
 
   async function handlePaySent() {
-    if (!conv) return;
     setPayPanel(false);
-    setMessages(await getMessages(conv.id));
-    setTimeout(() => scrollToBottom(true), 50);
+    setTimeout(() => scrollToBottom(true), 100);
+    // El realtime agrega el mensaje de pago automáticamente
   }
 
   function handleKey(e: React.KeyboardEvent) {
@@ -821,13 +863,19 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
 
         {messages.map(msg => {
           const isMe = msg.senderId === user.id;
+          const isOptimistic = msg.id < 0;
+          const wrapper = (child: React.ReactNode) => (
+            <div key={msg.id} style={isOptimistic ? { opacity: 0.6, transition: "opacity 0.15s" } : undefined}>
+              {child}
+            </div>
+          );
           if (msg.type === "payment_confirmed") {
-            return <MensajePagoConfirmado key={msg.id} msg={msg} />;
+            return wrapper(<MensajePagoConfirmado msg={msg} />);
           }
           if (msg.type === "payment_link") {
-            return <TarjetaPago key={msg.id} msg={msg} isMe={isMe} />;
+            return wrapper(<TarjetaPago msg={msg} isMe={isMe} />);
           }
-          return <BurbujaNormal key={msg.id} msg={msg} isMe={isMe} otherInit={otherInit} />;
+          return wrapper(<BurbujaNormal msg={msg} isMe={isMe} otherInit={otherInit} />);
         })}
 
         <div ref={bottomRef} />
@@ -913,7 +961,14 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
           <textarea
             ref={textareaRef}
             value={text}
-            onChange={e => { setText(e.target.value); autoResize(); }}
+            onChange={e => {
+              setText(e.target.value);
+              autoResize();
+              // Guardar borrador automáticamente
+              const key = `estamosCerca_draft_${conv.id}`;
+              if (e.target.value) sessionStorage.setItem(key, e.target.value);
+              else sessionStorage.removeItem(key);
+            }}
             onKeyDown={handleKey}
             placeholder="Escribí un mensaje..."
             rows={1}
@@ -927,17 +982,17 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
           />
           <button
             onClick={handleSend}
-            disabled={!text.trim()}
+            disabled={!text.trim() || sending}
             style={{
-              background: text.trim() ? "var(--green)" : "var(--border)",
-              color: text.trim() ? "#fff" : "var(--text-3)",
+              background: text.trim() && !sending ? "var(--green)" : "var(--border)",
+              color: text.trim() && !sending ? "#fff" : "var(--text-3)",
               border: "none", borderRadius: 8,
               padding: "9px 16px", fontSize: 13, fontWeight: 500,
-              cursor: text.trim() ? "pointer" : "default",
+              cursor: text.trim() && !sending ? "pointer" : "default",
               transition: "all 0.12s", flexShrink: 0,
             }}
           >
-            Enviar
+            {sending ? "..." : "Enviar"}
           </button>
         </div>
       </div>
