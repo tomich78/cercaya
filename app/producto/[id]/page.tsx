@@ -22,6 +22,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
   const [currentUser, setCurrentUser] = useState<LocalUser | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [activeImg, setActiveImg] = useState(0);
+  const [storyLoading, setStoryLoading] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -147,6 +148,36 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
     router.push(`/mensajes/${conv.id}`);
   }
 
+  // ── Story helpers ─────────────────────────────────────────────────────────────
+  function drawEmojiBg(ctx: CanvasRenderingContext2D, W: number, H: number, bg?: string, emoji?: string) {
+    ctx.fillStyle = bg ?? "#1a1a2e";
+    ctx.fillRect(0, 0, W, H);
+    if (emoji) {
+      ctx.font         = "bold 320px serif";
+      ctx.textAlign    = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(emoji, W / 2, H / 2 - 80);
+    }
+  }
+
+  function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+    const words = text.split(" ");
+    const lines: string[] = [];
+    let line = "";
+    for (const word of words) {
+      const test = line ? `${line} ${word}` : word;
+      if (ctx.measureText(test).width > maxWidth && line) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = test;
+      }
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
+
   async function handleShare() {
     const url = window.location.href;
     if (typeof navigator.share === "function") {
@@ -172,6 +203,104 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
     const text = `${displayed!.title} — ${displayed!.price}`;
     const waUrl = `https://wa.me/?text=${encodeURIComponent(text + "\n" + url)}`;
     window.open(waUrl, "_blank", "noopener,noreferrer");
+  }
+
+  async function handleShareStory() {
+    if (!displayed) return;
+    setStoryLoading(true);
+
+    try {
+      const W = 1080, H = 1920;
+      const canvas = document.createElement("canvas");
+      canvas.width  = W;
+      canvas.height = H;
+      const ctx = canvas.getContext("2d")!;
+
+      // ── Fondo ──────────────────────────────────────────────────
+      const firstImage = "images" in displayed && displayed.images?.[0];
+
+      if (firstImage) {
+        try {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          await new Promise<void>((res, rej) => {
+            img.onload  = () => res();
+            img.onerror = () => rej();
+            img.src = firstImage;
+          });
+          const scale = Math.max(W / img.width, H / img.height);
+          const sw = img.width * scale, sh = img.height * scale;
+          ctx.drawImage(img, (W - sw) / 2, (H - sh) / 2, sw, sh);
+        } catch {
+          drawEmojiBg(ctx, W, H, displayed.bg, displayed.emoji);
+        }
+      } else {
+        drawEmojiBg(ctx, W, H, displayed.bg, displayed.emoji);
+      }
+
+      // ── Gradiente oscuro abajo ──────────────────────────────────
+      const grad = ctx.createLinearGradient(0, H * 0.3, 0, H);
+      grad.addColorStop(0,   "rgba(0,0,0,0)");
+      grad.addColorStop(0.45,"rgba(0,0,0,0.55)");
+      grad.addColorStop(1,   "rgba(0,0,0,0.93)");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+
+      // ── Branding superior ───────────────────────────────────────
+      ctx.textAlign    = "center";
+      ctx.fillStyle    = "rgba(255,255,255,0.85)";
+      ctx.font         = "600 42px Arial, sans-serif";
+      ctx.fillText("📍 EstamosCerca", W / 2, 100);
+
+      // ── Título (word wrap) ──────────────────────────────────────
+      ctx.fillStyle = "#ffffff";
+      ctx.font      = "bold 96px Arial, sans-serif";
+      const titleLines = wrapText(ctx, displayed.title, W - 140);
+      const lineH      = 118;
+      const totalTitleH = titleLines.length * lineH;
+      const titleY     = H - 320 - totalTitleH;
+      titleLines.forEach((line, i) => ctx.fillText(line, W / 2, titleY + i * lineH));
+
+      // ── Categoría ───────────────────────────────────────────────
+      ctx.fillStyle = "rgba(255,255,255,0.6)";
+      ctx.font      = "500 50px Arial, sans-serif";
+      ctx.fillText(displayed.category ?? "", W / 2, H - 220);
+
+      // ── URL ─────────────────────────────────────────────────────
+      ctx.fillStyle = "rgba(255,255,255,0.45)";
+      ctx.font      = "400 40px Arial, sans-serif";
+      ctx.fillText("estamoscerca.com.ar", W / 2, H - 100);
+
+      // ── Exportar ────────────────────────────────────────────────
+      const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, "image/jpeg", 0.92));
+      if (!blob) throw new Error("No blob");
+
+      const file = new File([blob], "historia-estamoscerca.jpg", { type: "image/jpeg" });
+
+      // Intentar Web Share API con archivo (funciona en móvil)
+      if (
+        typeof navigator.share === "function" &&
+        typeof navigator.canShare === "function" &&
+        navigator.canShare({ files: [file] })
+      ) {
+        await navigator.share({ files: [file], title: displayed.title });
+      } else {
+        // Fallback: descarga directa
+        const url = URL.createObjectURL(blob);
+        const a   = document.createElement("a");
+        a.href     = url;
+        a.download = `historia-${displayed.title.slice(0, 30)}.jpg`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast("Imagen descargada · Subila a tus Historias de Instagram 📱", "success");
+      }
+    } catch (e) {
+      if ((e as Error)?.name !== "AbortError") {
+        toast("No se pudo generar la imagen", "error");
+      }
+    }
+
+    setStoryLoading(false);
   }
 
   return (
@@ -512,13 +641,42 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                 borderRadius: 8, padding: "1.25rem",
               }}>
                 {isOwnProduct && (
-                  <div style={{
-                    fontSize: 11, fontWeight: 600, color: "var(--green)",
-                    background: "var(--green-subtle)", padding: "4px 10px",
-                    borderRadius: 4, display: "inline-block",
-                    marginBottom: 14, letterSpacing: 0.2,
-                  }}>
-                    Tu publicación
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{
+                      fontSize: 11, fontWeight: 600, color: "var(--green)",
+                      background: "var(--green-subtle)", padding: "4px 10px",
+                      borderRadius: 4, display: "inline-block",
+                      letterSpacing: 0.2, marginBottom: 10,
+                    }}>
+                      Tu publicación
+                    </div>
+                    {/* Botón compartir en Instagram Stories */}
+                    <button
+                      onClick={handleShareStory}
+                      disabled={storyLoading}
+                      style={{
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                        width: "100%", padding: "9px 14px",
+                        background: storyLoading ? "var(--border)" : "linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045)",
+                        color: storyLoading ? "var(--text-3)" : "#fff",
+                        border: "none", borderRadius: 7,
+                        fontSize: 13, fontWeight: 600, cursor: storyLoading ? "default" : "pointer",
+                        transition: "opacity 0.15s",
+                        opacity: storyLoading ? 0.7 : 1,
+                      }}
+                    >
+                      {storyLoading ? (
+                        "Generando imagen..."
+                      ) : (
+                        <>
+                          {/* Instagram icon */}
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                          </svg>
+                          Compartir en Historia
+                        </>
+                      )}
+                    </button>
                   </div>
                 )}
                 {!isOwnProduct && (
