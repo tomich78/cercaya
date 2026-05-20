@@ -446,6 +446,10 @@ export default function PerfilPage() {
   const [editErr,  setEditErr]      = useState("");
   const [saving,   setSaving]       = useState(false);
 
+  // Estado de pestañas (deben estar ANTES del early return)
+  const [activeTab,  setActiveTab]  = useState<"publicaciones"|"verificacion"|"negocio"|"estadisticas">("publicaciones");
+  const [prodFilter, setProdFilter] = useState<"todas"|"activas"|"vendidas"|"destacadas"|"vencidas">("todas");
+
   async function reload() {
     const u = await getCurrentUser();
     if (!u) return;
@@ -528,10 +532,6 @@ export default function PerfilPage() {
   if (!ready || !user) return <div><Navbar /></div>;
 
   const trust = trustLabel(user);
-  type ProfileTab = "publicaciones" | "verificacion" | "negocio" | "estadisticas";
-  const [activeTab, setActiveTab] = useState<ProfileTab>("publicaciones");
-  type ProdFilter = "todas" | "activas" | "vendidas" | "destacadas" | "vencidas";
-  const [prodFilter, setProdFilter] = useState<ProdFilter>("todas");
 
   const filteredProducts = myProducts.filter(p => {
     const days = p.expiresAt ? Math.ceil((new Date(p.expiresAt).getTime() - Date.now()) / 86_400_000) : null;
@@ -542,7 +542,7 @@ export default function PerfilPage() {
     return true;
   });
 
-  const tabs: { id: ProfileTab; label: string; count?: number }[] = [
+  const tabs: { id: "publicaciones"|"verificacion"|"negocio"|"estadisticas"; label: string; count?: number }[] = [
     { id: "publicaciones", label: "Publicaciones", count: myProducts.length },
     { id: "verificacion",  label: "Verificación" },
     { id: "negocio",       label: "Modo Negocio" },
@@ -682,8 +682,8 @@ export default function PerfilPage() {
           <div>
             {/* Filtros */}
             <div style={{ display: "flex", gap: 6, marginBottom: 14, overflowX: "auto", paddingBottom: 2 }}>
-              {(["todas","activas","vendidas","destacadas","vencidas"] as ProdFilter[]).map(f => {
-                const labels: Record<ProdFilter,string> = { todas:"Todas", activas:"Activas", vendidas:"Vendidas", destacadas:"⭐ Destacadas", vencidas:"Vencidas" };
+              {(["todas","activas","vendidas","destacadas","vencidas"] as ("todas"|"activas"|"vendidas"|"destacadas"|"vencidas")[]).map(f => {
+                const labels: Record<"todas"|"activas"|"vendidas"|"destacadas"|"vencidas",string> = { todas:"Todas", activas:"Activas", vendidas:"Vendidas", destacadas:"⭐ Destacadas", vencidas:"Vencidas" };
                 const count = f === "todas" ? myProducts.length : myProducts.filter(p => {
                   const days = p.expiresAt ? Math.ceil((new Date(p.expiresAt).getTime() - Date.now()) / 86_400_000) : null;
                   if (f === "activas")    return !p.sold && (days === null || days > 0);
