@@ -258,13 +258,81 @@ export default function AnunciarPage() {
                   <Link href="/perfil" style={{ fontSize: 12, color: "var(--text-3)" }}>Ir a tu perfil →</Link>
                 </div>
               ) : (
-                <BotonPago
-                  tipo="negocio_mes"
-                  userId={user.id}
-                  label="Activar Modo Negocio"
-                  descripcion="1 mes · Renovable"
-                  precio={precios.negocio_mes}
-                />
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <BotonPago
+                    tipo="negocio_mes"
+                    userId={user.id}
+                    label="Activar Modo Negocio"
+                    descripcion="1 mes · Renovable"
+                    precio={precios.negocio_mes}
+                  />
+                  {/* Código promocional — solo aplica a Modo Negocio */}
+                  {promoSuccess ? (
+                    <div style={{
+                      display: "flex", alignItems: "center", gap: 8,
+                      background: "var(--green-subtle)", border: "1px solid #c5e8dc",
+                      borderRadius: 8, padding: "10px 14px",
+                    }}>
+                      <span style={{ fontSize: 18 }}>🎉</span>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--green)" }}>{promoSuccess}</div>
+                        <Link href="/perfil" style={{ fontSize: 11, color: "var(--text-2)" }}>Configurar perfil →</Link>
+                      </div>
+                    </div>
+                  ) : showPromo ? (
+                    <div>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                        <input
+                          value={promoInput}
+                          onChange={e => { setPromoInput(e.target.value.toUpperCase().replace(/\s/g, "")); setPromoError(""); }}
+                          onKeyDown={e => e.key === "Enter" && handleApplyPromo()}
+                          placeholder="Código promocional"
+                          maxLength={20}
+                          style={{
+                            flex: 1, padding: "8px 10px",
+                            border: `1px solid ${promoError ? "#dc2626" : "var(--border)"}`,
+                            borderRadius: 6, fontSize: 13, fontWeight: 600,
+                            fontFamily: "monospace", letterSpacing: 1,
+                            background: "var(--bg)", color: "var(--text)", outline: "none",
+                          }}
+                        />
+                        <button
+                          onClick={handleApplyPromo}
+                          disabled={promoLoading || !promoInput.trim()}
+                          style={{
+                            padding: "8px 14px", borderRadius: 6, border: "none",
+                            background: promoLoading || !promoInput.trim() ? "var(--border)" : "var(--green)",
+                            color: promoLoading || !promoInput.trim() ? "var(--text-3)" : "#fff",
+                            fontSize: 12, fontWeight: 600,
+                            cursor: promoLoading || !promoInput.trim() ? "default" : "pointer",
+                            whiteSpace: "nowrap" as const,
+                          }}
+                        >
+                          {promoLoading ? "..." : "Aplicar"}
+                        </button>
+                        <button
+                          onClick={() => { setShowPromo(false); setPromoInput(""); setPromoError(""); }}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: 18, lineHeight: 1, padding: "0 2px" }}
+                        >×</button>
+                      </div>
+                      {promoError && (
+                        <div style={{ fontSize: 11, color: "#dc2626", marginTop: 4 }}>⚠️ {promoError}</div>
+                      )}
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setShowPromo(true)}
+                      style={{
+                        background: "none", border: "none", cursor: "pointer",
+                        fontSize: 12, color: "var(--text-3)",
+                        textDecoration: "underline", textDecorationStyle: "dotted" as const,
+                        padding: 0, textAlign: "center" as const, width: "100%",
+                      }}
+                    >
+                      🎟️ ¿Tenés un código promocional?
+                    </button>
+                  )}
+                </div>
               )}
             </PlanCard>
 
@@ -306,84 +374,6 @@ export default function AnunciarPage() {
             </PlanCard>
 
           </div>
-        </div>
-
-        {/* ── Código promocional ── */}
-        <div style={{ textAlign: "center", marginBottom: 48, marginTop: -24 }}>
-          {!showPromo && !promoSuccess ? (
-            <button
-              onClick={() => setShowPromo(true)}
-              style={{
-                background: "none", border: "none", cursor: "pointer",
-                fontSize: 13, color: "var(--text-3)",
-                textDecoration: "underline", textDecorationStyle: "dotted" as const,
-              }}
-            >
-              🎟️ ¿Tenés un código promocional?
-            </button>
-          ) : promoSuccess ? (
-            <div style={{
-              display: "inline-flex", alignItems: "center", gap: 10,
-              background: "var(--green-subtle)", border: "1px solid #c5e8dc",
-              borderRadius: 10, padding: "14px 20px",
-            }}>
-              <span style={{ fontSize: 22 }}>🎉</span>
-              <div style={{ textAlign: "left" as const }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--green)" }}>{promoSuccess}</div>
-                <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 3 }}>
-                  Ya podés configurar tu perfil de negocio en{" "}
-                  <Link href="/perfil" style={{ color: "var(--green)", fontWeight: 600 }}>Mi perfil →</Link>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: "inline-block", textAlign: "left" as const }}>
-              <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 8, textAlign: "center" as const }}>
-                Ingresá tu código
-              </div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <input
-                  value={promoInput}
-                  onChange={e => {
-                    setPromoInput(e.target.value.toUpperCase().replace(/\s/g, ""));
-                    setPromoError("");
-                  }}
-                  onKeyDown={e => e.key === "Enter" && handleApplyPromo()}
-                  placeholder="Ej: CERCAYA30"
-                  maxLength={20}
-                  style={{
-                    padding: "9px 14px", border: `1px solid ${promoError ? "#dc2626" : "var(--border)"}`,
-                    borderRadius: 6, fontSize: 14, fontWeight: 600,
-                    fontFamily: "monospace", letterSpacing: 1,
-                    background: "var(--bg)", color: "var(--text)",
-                    outline: "none", width: 200,
-                  }}
-                />
-                <button
-                  onClick={handleApplyPromo}
-                  disabled={promoLoading || !promoInput.trim()}
-                  style={{
-                    padding: "9px 18px", borderRadius: 6, border: "none",
-                    background: promoLoading || !promoInput.trim() ? "var(--border)" : "var(--green)",
-                    color: promoLoading || !promoInput.trim() ? "var(--text-3)" : "#fff",
-                    fontSize: 13, fontWeight: 600,
-                    cursor: promoLoading || !promoInput.trim() ? "default" : "pointer",
-                  }}
-                >
-                  {promoLoading ? "Verificando..." : "Aplicar"}
-                </button>
-                <button
-                  onClick={() => { setShowPromo(false); setPromoInput(""); setPromoError(""); }}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: 18, lineHeight: 1 }}
-                >×</button>
-              </div>
-              {promoError && (
-                <div style={{ fontSize: 12, color: "#dc2626", marginTop: 6, display: "flex", alignItems: "center", gap: 5 }}>
-                  ⚠️ {promoError}
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         {/* ── Cómo funciona ── */}

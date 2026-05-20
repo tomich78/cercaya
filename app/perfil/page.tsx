@@ -851,7 +851,7 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
   const [step, setStep] = useState<BizStep>("closed");
   const [saving, setSaving]   = useState(false);
   const [cuitErr, setCuitErr] = useState("");
-  const [precioNegocio, setPrecioNegocio] = useState(PRECIOS.negocio_mes);
+  const [precioNegocio, setPrecioNegocio] = useState<number>(PRECIOS.negocio_mes);
 
   useEffect(() => {
     getPreciosDB().then(p => setPrecioNegocio(p.negocio_mes));
