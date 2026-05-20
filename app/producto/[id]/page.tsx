@@ -609,26 +609,13 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
             )}
 
             <div style={{ borderTop: "1px solid var(--border)", paddingTop: 18 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase" as const, letterSpacing: 0.3, marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase" as const, letterSpacing: 0.3, marginBottom: 8 }}>
                 Entrega
               </div>
-              <div style={{
-                border: "1px solid var(--border)", borderRadius: 8, padding: "12px 14px",
-                display: "flex", alignItems: "center", gap: 12, background: "var(--surface)", marginBottom: 10,
-              }}>
-                <div style={{
-                  width: 34, height: 34, background: "var(--text)", borderRadius: 6,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  color: "#fff", fontWeight: 800, fontSize: 13, flexShrink: 0,
-                }}>U</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>Envío con Uber</div>
-                  <div style={{ fontSize: 12, color: "var(--text-3)" }}>Recibilo hoy en tu domicilio</div>
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>~$3.500</div>
-              </div>
-              <div style={{ fontSize: 12, color: "var(--text-3)" }}>
-                O coordinar retiro presencial con el vendedor en un lugar público
+              <div style={{ fontSize: 13, color: "var(--text-2)" }}>
+                {"delivery" in displayed && displayed.delivery === "envio"  ? "📦 El vendedor hace envíos" :
+                 "delivery" in displayed && displayed.delivery === "ambos"  ? "✅ Retiro en persona o envío" :
+                 "🤝 Retiro en persona — coordiná con el vendedor en un lugar público"}
               </div>
             </div>
           </div>

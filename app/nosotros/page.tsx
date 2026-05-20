@@ -15,7 +15,7 @@ const STATS = [
   { value: "100%", label: "gratuito para publicar" },
   { value: "0", label: "comisiones por venta" },
   { value: "🇦🇷", label: "hecho en Argentina" },
-  { value: "2025", label: "año de lanzamiento" },
+  { value: "2026", label: "año de lanzamiento" },
 ];
 
 const VALUES = [

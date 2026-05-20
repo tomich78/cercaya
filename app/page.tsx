@@ -484,13 +484,13 @@ function HomeInner() {
         )}
 
         {/* Barra de filtros */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
 
           {/* Botón Filtros */}
           <button
             onClick={() => setFiltersOpen(o => !o)}
             style={{
-              display: "flex", alignItems: "center", gap: 6,
+              display: "flex", alignItems: "center", gap: 6, flexShrink: 0,
               padding: "6px 12px", borderRadius: 6, border: "1px solid",
               borderColor: activeFilterCount > 0 ? "var(--green)" : "var(--border)",
               background:  activeFilterCount > 0 ? "var(--green-subtle)" : "var(--surface)",
@@ -515,8 +515,8 @@ function HomeInner() {
             )}
           </button>
 
-          {/* Sort pills */}
-          <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
+          {/* Sort pills — scroll horizontal en mobile */}
+          <div style={{ display: "flex", gap: 4, overflowX: "auto", flex: 1, paddingBottom: 2, scrollbarWidth: "none" }}>
             {(Object.entries(sortLabels) as [SortOption, string][]).map(([key, label]) => (
               <button
                 key={key}
@@ -527,7 +527,7 @@ function HomeInner() {
                   background:  sortBy === key ? "var(--green-subtle)" : "var(--surface)",
                   color:       sortBy === key ? "var(--green)" : "var(--text-2)",
                   fontWeight:  sortBy === key ? 600 : 400,
-                  fontSize: 12, cursor: "pointer", whiteSpace: "nowrap",
+                  fontSize: 12, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
                 }}
               >
                 {label}

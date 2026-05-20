@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
-import { saveLocalProduct, uploadProductImages } from "../lib/storage";
+import { saveLocalProduct, uploadProductImages, getLocalProducts } from "../lib/storage";
 import { getCurrentUser, type LocalUser } from "../lib/auth";
 import {
   LISTING_TYPES, PRODUCT_CATEGORIES, SERVICE_CATEGORIES,
@@ -16,8 +16,9 @@ import LocationInput from "../components/LocationInput";
 import { usePageTitle } from "../lib/usePageTitle";
 import ExcelUpload from "./ExcelUpload";
 
-const MAX_IMAGES = 5;
-const MAX_DESC   = 800;
+const MAX_IMAGES    = 5;
+const MAX_DESC      = 800;
+const MAX_PRODUCTS  = 20; // límite para cuentas normales (negocio = sin límite)
 
 /* ── helpers ──────────────────────────────────────────────────── */
 function formatPrice(raw: string): string {
@@ -169,10 +170,19 @@ export default function PublicarPage() {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const [limitReached, setLimitReached] = useState(false);
+
   useEffect(() => {
-    getCurrentUser().then(u => {
+    getCurrentUser().then(async u => {
       if (!u) { router.replace("/login?redirect=/publicar"); return; }
-      setUser(u); setChecking(false);
+      setUser(u);
+      // Verificar límite solo para cuentas normales
+      if (!u.isBusiness || !u.businessPaid) {
+        const all = await getLocalProducts();
+        const active = all.filter(p => p.userId === u.id && !p.sold);
+        if (active.length >= MAX_PRODUCTS) setLimitReached(true);
+      }
+      setChecking(false);
     });
   }, [router]);
 
@@ -308,6 +318,28 @@ export default function PublicarPage() {
   }
 
   if (checking) return <div><Navbar /></div>;
+
+  if (limitReached) return (
+    <div>
+      <Navbar />
+      <div style={{ maxWidth: 480, margin: "4rem auto", padding: "0 1.5rem", textAlign: "center" }}>
+        <div style={{ fontSize: 40, marginBottom: 16 }}>🚫</div>
+        <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Límite de publicaciones alcanzado</h1>
+        <p style={{ fontSize: 14, color: "var(--text-2)", lineHeight: 1.6, marginBottom: 24 }}>
+          Las cuentas normales pueden tener hasta <strong>{MAX_PRODUCTS} publicaciones activas</strong>.<br />
+          Vendé o eliminá alguna para publicar más, o activá el <strong>Modo Negocio</strong> para tener publicaciones ilimitadas.
+        </p>
+        <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+          <Link href="/perfil" style={{ padding: "9px 20px", borderRadius: 7, background: "var(--green)", color: "#fff", fontWeight: 600, fontSize: 13, textDecoration: "none" }}>
+            Ver mis publicaciones
+          </Link>
+          <Link href="/anunciar" style={{ padding: "9px 20px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-2)", fontWeight: 500, fontSize: 13, textDecoration: "none" }}>
+            Ver Modo Negocio →
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div>
@@ -511,7 +543,13 @@ export default function PublicarPage() {
                         <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--text-2)", marginBottom: 7 }}>Stock disponible</label>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <button onClick={() => setField("stock", Math.max(1, form.stock - 1))} style={{ width: 30, height: 30, borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", cursor: form.stock <= 1 ? "default" : "pointer", fontSize: 17, color: form.stock <= 1 ? "var(--border)" : "var(--text-2)", display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
-                          <span style={{ fontSize: 15, fontWeight: 700, minWidth: 28, textAlign: "center" }}>{form.stock}</span>
+                          <input
+                            type="number"
+                            value={form.stock}
+                            min={1} max={999}
+                            onChange={e => setField("stock", Math.min(999, Math.max(1, parseInt(e.target.value) || 1)))}
+                            style={{ width: 58, height: 30, borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: 15, fontWeight: 700, textAlign: "center", outline: "none", fontFamily: "inherit" }}
+                          />
                           <button onClick={() => setField("stock", Math.min(999, form.stock + 1))} style={{ width: 30, height: 30, borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", cursor: "pointer", fontSize: 17, color: "var(--text-2)", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
                           <span style={{ fontSize: 12, color: "var(--text-3)" }}>{form.stock === 1 ? "unidad" : "unidades"}</span>
                         </div>

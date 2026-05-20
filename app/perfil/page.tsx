@@ -528,6 +528,26 @@ export default function PerfilPage() {
   if (!ready || !user) return <div><Navbar /></div>;
 
   const trust = trustLabel(user);
+  type ProfileTab = "publicaciones" | "verificacion" | "negocio" | "estadisticas";
+  const [activeTab, setActiveTab] = useState<ProfileTab>("publicaciones");
+  type ProdFilter = "todas" | "activas" | "vendidas" | "destacadas" | "vencidas";
+  const [prodFilter, setProdFilter] = useState<ProdFilter>("todas");
+
+  const filteredProducts = myProducts.filter(p => {
+    const days = p.expiresAt ? Math.ceil((new Date(p.expiresAt).getTime() - Date.now()) / 86_400_000) : null;
+    if (prodFilter === "activas")    return !p.sold && (days === null || days > 0);
+    if (prodFilter === "vendidas")   return !!p.sold;
+    if (prodFilter === "destacadas") return !!p.featured;
+    if (prodFilter === "vencidas")   return !p.sold && days !== null && days <= 0;
+    return true;
+  });
+
+  const tabs: { id: ProfileTab; label: string; count?: number }[] = [
+    { id: "publicaciones", label: "Publicaciones", count: myProducts.length },
+    { id: "verificacion",  label: "Verificación" },
+    { id: "negocio",       label: "Modo Negocio" },
+    { id: "estadisticas",  label: "Estadísticas" },
+  ];
 
   return (
     <div>
@@ -626,104 +646,186 @@ export default function PerfilPage() {
         {/* ── Indicador de perfil completo ── */}
         <ProfileCompletion user={user} products={myProducts} />
 
-        {/* ── Verificaciones ── */}
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "1.25rem", marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase" as const, letterSpacing: 0.5, marginBottom: 4 }}>
-            Verificaciones de identidad
-          </div>
-          <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 14 }}>
-            Los vendedores verificados generan más confianza y reciben más consultas.
-          </div>
-          <div style={{ borderTop: "1px solid var(--border)" }}>
-            <PhoneVerification user={user} onVerified={() => { reload(); toast("Teléfono verificado ✓"); }} />
-          </div>
-          <div style={{ borderTop: "1px solid var(--border)" }}>
-            <DniVerification user={user} onSubmitted={() => { reload(); toast("DNI enviado — lo revisamos en 24–48 h", "info"); }} />
-          </div>
+        {/* ── Navegación de pestañas ── */}
+        <div style={{ display: "flex", gap: 2, marginBottom: 16, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: 4, overflowX: "auto" }}>
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                flex: 1, minWidth: "max-content", padding: "8px 14px", borderRadius: 6, border: "none",
+                background: activeTab === tab.id ? "var(--green)" : "transparent",
+                color:      activeTab === tab.id ? "#fff" : "var(--text-2)",
+                fontWeight: activeTab === tab.id ? 600 : 400,
+                fontSize: 13, cursor: "pointer", transition: "all 0.12s",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+              }}
+            >
+              {tab.label}
+              {tab.count !== undefined && (
+                <span style={{
+                  fontSize: 10, fontWeight: 700, minWidth: 18, height: 18,
+                  borderRadius: 999, padding: "0 5px",
+                  background: activeTab === tab.id ? "rgba(255,255,255,0.25)" : "var(--border)",
+                  color: activeTab === tab.id ? "#fff" : "var(--text-3)",
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
 
-        {/* ── Reseñas recibidas ── */}
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "1.25rem", marginBottom: 16 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, letterSpacing: -0.2 }}>
-            Reseñas recibidas
-            <span style={{ fontSize: 12, fontWeight: 400, color: "var(--text-3)", marginLeft: 6 }}>({myReviews.length})</span>
-          </div>
-          {myReviews.length === 0 ? (
-            <div style={{ fontSize: 13, color: "var(--text-3)" }}>
-              Todavía no recibiste reseñas. Aparecen acá cuando alguien califica una transacción.
+        {/* ══ PESTAÑA: Publicaciones ══ */}
+        {activeTab === "publicaciones" && (
+          <div>
+            {/* Filtros */}
+            <div style={{ display: "flex", gap: 6, marginBottom: 14, overflowX: "auto", paddingBottom: 2 }}>
+              {(["todas","activas","vendidas","destacadas","vencidas"] as ProdFilter[]).map(f => {
+                const labels: Record<ProdFilter,string> = { todas:"Todas", activas:"Activas", vendidas:"Vendidas", destacadas:"⭐ Destacadas", vencidas:"Vencidas" };
+                const count = f === "todas" ? myProducts.length : myProducts.filter(p => {
+                  const days = p.expiresAt ? Math.ceil((new Date(p.expiresAt).getTime() - Date.now()) / 86_400_000) : null;
+                  if (f === "activas")    return !p.sold && (days === null || days > 0);
+                  if (f === "vendidas")   return !!p.sold;
+                  if (f === "destacadas") return !!p.featured;
+                  if (f === "vencidas")   return !p.sold && days !== null && days <= 0;
+                  return true;
+                }).length;
+                return (
+                  <button key={f} onClick={() => setProdFilter(f)} style={{
+                    padding: "5px 12px", borderRadius: 999, border: "1px solid",
+                    borderColor: prodFilter === f ? "var(--green)" : "var(--border)",
+                    background:  prodFilter === f ? "var(--green)" : "var(--surface)",
+                    color:       prodFilter === f ? "#fff" : "var(--text-2)",
+                    fontWeight:  prodFilter === f ? 600 : 400,
+                    fontSize: 12, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
+                  }}>
+                    {labels[f]} {count > 0 && <span style={{ opacity: 0.7 }}>({count})</span>}
+                  </button>
+                );
+              })}
+              <Link href="/publicar" style={{ marginLeft: "auto", flexShrink: 0, padding: "5px 14px", borderRadius: 999, background: "var(--green)", color: "#fff", fontSize: 12, fontWeight: 600, textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
+                + Nueva
+              </Link>
             </div>
-          ) : (
-            myReviews.map((r, i) => (
-              <div key={r.id} style={{ paddingBottom: i < myReviews.length - 1 ? 14 : 0, marginBottom: i < myReviews.length - 1 ? 14 : 0, borderBottom: i < myReviews.length - 1 ? "1px solid var(--border)" : "none" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--bg)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 600, color: "var(--text-2)" }}>
-                      {r.reviewerInitials}
-                    </div>
-                    <span style={{ fontSize: 13, fontWeight: 600 }}>{r.reviewerName}</span>
-                  </div>
-                  <div style={{ color: "var(--amber)", fontSize: 13, letterSpacing: 1 }}>
-                    {"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}
-                  </div>
+
+            {filteredProducts.length === 0 ? (
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "2.5rem", textAlign: "center", color: "var(--text-3)" }}>
+                <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>
+                  {myProducts.length === 0 ? "No publicaste nada todavía" : "No hay publicaciones en esta categoría"}
                 </div>
-                <div style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.6 }}>{r.text}</div>
+                {myProducts.length === 0 && <Link href="/publicar" style={{ fontSize: 13, color: "var(--green)", fontWeight: 500 }}>Publicar algo →</Link>}
               </div>
-            ))
-          )}
-        </div>
-
-        {/* ── Perfil de negocio ── */}
-        <BusinessSection user={user} onSaved={() => { reload(); toast("Perfil de negocio actualizado ✓"); }} />
-
-        {/* ── Mis publicaciones ── */}
-        <div style={{ marginBottom: 8 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase" as const, letterSpacing: 0.5 }}>
-              Mis publicaciones ({myProducts.length})
-            </div>
-            <Link href="/publicar" style={{ fontSize: 12, color: "var(--green)", fontWeight: 500 }}>+ Nueva</Link>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {filteredProducts.map(p => (
+                  <ProductMini
+                    key={p.id}
+                    product={p}
+                    isBusiness={user.isBusiness && user.businessPaid}
+                    onDelete={async () => {
+                      await deleteLocalProduct(p.id);
+                      setMyProducts(prev => prev.filter(x => x.id !== p.id));
+                      toast("Publicación eliminada", "info");
+                    }}
+                    onToggleSold={async () => {
+                      const newSold = !p.sold;
+                      await updateProduct(p.id, { sold: newSold });
+                      setMyProducts(prev => prev.map(x => x.id === p.id ? { ...x, sold: newSold } : x));
+                      toast(newSold ? "Marcado como vendido" : "Vuelto a activar", "info");
+                    }}
+                    onTogglePinned={async () => {
+                      const newPinned = !p.pinned;
+                      await updateProduct(p.id, { pinned: newPinned });
+                      setMyProducts(prev => prev.map(x => x.id === p.id ? { ...x, pinned: newPinned } : x));
+                      toast(newPinned ? "📌 Producto fijado en tu página" : "Producto desfijado", "info");
+                    }}
+                    onRenew={async () => {
+                      await renewProduct(p.id);
+                      const newExpiry = new Date(Date.now() + 60 * 86_400_000).toISOString();
+                      setMyProducts(prev => prev.map(x => x.id === p.id ? { ...x, expiresAt: newExpiry } : x));
+                      toast("Publicación renovada por 60 días ✓");
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
+        )}
 
-          {myProducts.length === 0 ? (
-            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "2.5rem", textAlign: "center", color: "var(--text-3)" }}>
-              <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>No publicaste nada todavía</div>
-              <Link href="/publicar" style={{ fontSize: 13, color: "var(--green)", fontWeight: 500 }}>Publicar algo →</Link>
+        {/* ══ PESTAÑA: Verificación ══ */}
+        {activeTab === "verificacion" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "1.25rem" }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase" as const, letterSpacing: 0.5, marginBottom: 4 }}>
+                Verificaciones de identidad
+              </div>
+              <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 14 }}>
+                Los vendedores verificados generan más confianza y reciben más consultas.
+              </div>
+              <div style={{ borderTop: "1px solid var(--border)" }}>
+                <PhoneVerification user={user} onVerified={() => { reload(); toast("Teléfono verificado ✓"); }} />
+              </div>
+              <div style={{ borderTop: "1px solid var(--border)" }}>
+                <DniVerification user={user} onSubmitted={() => { reload(); toast("DNI enviado — lo revisamos en 24–48 h", "info"); }} />
+              </div>
             </div>
-          ) : (
-            <div className="product-grid">
-              {myProducts.map(p => (
-                <ProductMini
-                  key={p.id}
-                  product={p}
-                  isBusiness={user.isBusiness && user.businessPaid}
-                  onDelete={async () => {
-                    await deleteLocalProduct(p.id);
-                    setMyProducts(prev => prev.filter(x => x.id !== p.id));
-                    toast("Publicación eliminada", "info");
-                  }}
-                  onToggleSold={async () => {
-                    const newSold = !p.sold;
-                    await updateProduct(p.id, { sold: newSold });
-                    setMyProducts(prev => prev.map(x => x.id === p.id ? { ...x, sold: newSold } : x));
-                    toast(newSold ? "Marcado como vendido" : "Vuelto a activar", "info");
-                  }}
-                  onTogglePinned={async () => {
-                    const newPinned = !p.pinned;
-                    await updateProduct(p.id, { pinned: newPinned });
-                    setMyProducts(prev => prev.map(x => x.id === p.id ? { ...x, pinned: newPinned } : x));
-                    toast(newPinned ? "📌 Producto fijado en tu página" : "Producto desfijado", "info");
-                  }}
-                  onRenew={async () => {
-                    await renewProduct(p.id);
-                    const newExpiry = new Date(Date.now() + 60 * 86_400_000).toISOString();
-                    setMyProducts(prev => prev.map(x => x.id === p.id ? { ...x, expiresAt: newExpiry } : x));
-                    toast("Publicación renovada por 60 días ✓");
-                  }}
-                />
-              ))}
+
+            {/* Reseñas */}
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "1.25rem" }}>
+              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, letterSpacing: -0.2 }}>
+                Reseñas recibidas
+                <span style={{ fontSize: 12, fontWeight: 400, color: "var(--text-3)", marginLeft: 6 }}>({myReviews.length})</span>
+              </div>
+              {myReviews.length === 0 ? (
+                <div style={{ fontSize: 13, color: "var(--text-3)" }}>
+                  Todavía no recibiste reseñas. Aparecen acá cuando alguien califica una transacción.
+                </div>
+              ) : (
+                myReviews.map((r, i) => (
+                  <div key={r.id} style={{ paddingBottom: i < myReviews.length - 1 ? 14 : 0, marginBottom: i < myReviews.length - 1 ? 14 : 0, borderBottom: i < myReviews.length - 1 ? "1px solid var(--border)" : "none" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--bg)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 600, color: "var(--text-2)" }}>
+                          {r.reviewerInitials}
+                        </div>
+                        <span style={{ fontSize: 13, fontWeight: 600 }}>{r.reviewerName}</span>
+                      </div>
+                      <div style={{ color: "var(--amber)", fontSize: 13, letterSpacing: 1 }}>
+                        {"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.6 }}>{r.text}</div>
+                  </div>
+                ))
+              )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* ══ PESTAÑA: Modo Negocio ══ */}
+        {activeTab === "negocio" && (
+          <BusinessSection user={user} onSaved={() => { reload(); toast("Perfil de negocio actualizado ✓"); }} />
+        )}
+
+        {/* ══ PESTAÑA: Estadísticas ══ */}
+        {activeTab === "estadisticas" && (
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "1.25rem" }}>
+            {user.isBusiness && user.businessPaid ? (
+              <BusinessStats userId={user.id} />
+            ) : (
+              <div style={{ textAlign: "center", padding: "2rem 0", color: "var(--text-3)" }}>
+                <div style={{ fontSize: 32, marginBottom: 12 }}>📊</div>
+                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6, color: "var(--text-2)" }}>Estadísticas disponibles en Modo Negocio</div>
+                <div style={{ fontSize: 13, marginBottom: 16 }}>Vistas, consultas, ventas y más.</div>
+                <button onClick={() => setActiveTab("negocio")} style={{ padding: "8px 20px", borderRadius: 7, background: "var(--green)", color: "#fff", border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                  Ver Modo Negocio →
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
       </div>
     </div>
@@ -971,10 +1073,11 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
             <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
               {[
                 ["✓", "Badge \"Negocio\" en tu perfil y productos"],
-                ["✓", "Verificación de CUIT — sello de confianza"],
+                ["✓", "Sin límite de publicaciones activas"],
                 ["✓", "Horario de atención visible para compradores"],
                 ["✓", "Descripción y rubro de tu negocio"],
-                ["✓", "Sin límite de publicaciones activas"],
+                ["✓", "Verificación de CUIT (opcional) — sello de confianza"],
+                ["✓", "Vinculación con Mercado Pago para cobrar online"],
                 ["✓", "Estadísticas de visitas (próximamente)"],
               ].map(([icon, text]) => (
                 <div key={text} style={{ display: "flex", gap: 8, fontSize: 13, color: "var(--text-2)", alignItems: "flex-start" }}>
@@ -1433,123 +1536,90 @@ function ProductMini({
   const isExpired  = days !== null && days <= 0;
 
   return (
-    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
-      <Link href={`/producto/${product.id}`}>
-        <div style={{ position: "relative", height: 96 }}>
+    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", display: "flex", alignItems: "stretch" }}>
+      {/* Miniatura */}
+      <Link href={`/editar/${product.id}`} style={{ flexShrink: 0, textDecoration: "none" }}>
+        <div style={{ position: "relative", width: 84, height: "100%", minHeight: 84 }}>
           {coverImage ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={coverImage} alt={product.title} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            <img src={coverImage} alt={product.title} style={{ width: 84, height: 84, objectFit: "cover", display: "block" }} />
           ) : (
-            <div style={{ background: product.bg, height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36 }}>
+            <div style={{ background: product.bg, width: 84, height: 84, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32 }}>
               {product.emoji}
             </div>
           )}
-          {/* Badge vendido */}
           {product.sold && (
-            <div style={{
-              position: "absolute", inset: 0,
-              background: "rgba(0,0,0,0.45)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: "rgba(0,0,0,0.6)", padding: "3px 10px", borderRadius: 4, letterSpacing: 1, textTransform: "uppercase" }}>
-                Vendido
-              </span>
+            <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ fontSize: 9, fontWeight: 700, color: "#fff", background: "rgba(0,0,0,0.6)", padding: "2px 6px", borderRadius: 3, letterSpacing: 1, textTransform: "uppercase" }}>Vendido</span>
             </div>
           )}
-          {/* Badge vencida */}
           {!product.sold && isExpired && (
-            <div style={{
-              position: "absolute", inset: 0,
-              background: "rgba(0,0,0,0.5)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: "rgba(185,28,28,0.85)", padding: "3px 10px", borderRadius: 4, letterSpacing: 1, textTransform: "uppercase" }}>
-                Vencida
-              </span>
+            <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ fontSize: 9, fontWeight: 700, color: "#fff", background: "rgba(185,28,28,0.8)", padding: "2px 6px", borderRadius: 3, letterSpacing: 1, textTransform: "uppercase" }}>Vencida</span>
             </div>
           )}
-        </div>
-        <div style={{ padding: "9px 11px 4px" }}>
-          <div style={{ fontSize: 12, fontWeight: 500, lineHeight: 1.3, marginBottom: 3, color: product.sold ? "var(--text-3)" : "var(--text)", textDecoration: product.sold ? "line-through" : "none" }}>
-            {product.title}
-          </div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: product.sold ? "var(--text-3)" : "var(--green)", letterSpacing: -0.3 }}>
-            {product.price}
-          </div>
         </div>
       </Link>
 
-      {/* Acciones — fila 1 */}
-      <div style={{ padding: "6px 11px 0", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        {/* Expiración */}
-        <ExpiryBadge days={days} />
-
-        {isExpired ? (
-          /* Publicación vencida: solo mostrar "Renovar" */
-          onRenew && (
-            <button
-              onClick={async () => { setRenewing(true); await onRenew(); setRenewing(false); }}
-              disabled={renewing}
-              style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: "var(--green)", border: "none", borderRadius: 4, padding: "3px 10px", cursor: renewing ? "default" : "pointer", opacity: renewing ? 0.7 : 1 }}
-            >
-              {renewing ? "..." : "↺ Renovar 60 días"}
-            </button>
-          )
-        ) : (
-          <>
-            <Link
-              href={`/editar/${product.id}`}
-              style={{ fontSize: 11, color: "var(--green)", fontWeight: 600, textDecoration: "none" }}
-            >
-              Editar
-            </Link>
-            {!product.sold && (
-              <Link
-                href={`/destacar/${product.id}`}
-                style={{
-                  fontSize: 11, fontWeight: 600, textDecoration: "none",
-                  color: product.featured ? "#d97706" : "var(--text-3)",
-                }}
-              >
-                {product.featured ? "⭐ Destacado" : "⭐ Destacar"}
-              </Link>
-            )}
-            <button
-              onClick={onToggleSold}
-              style={{ fontSize: 11, color: product.sold ? "var(--text-2)" : "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-            >
-              {product.sold ? "Activar" : "Marcar vendido"}
-            </button>
-            {isBusiness && !product.sold && onTogglePinned && (
-              <button
-                onClick={onTogglePinned}
-                title={product.pinned ? "Quitar de fijados" : "Fijar en tu página de negocio"}
-                style={{
-                  fontSize: 11, fontWeight: product.pinned ? 700 : 400,
-                  color: product.pinned ? "#d97706" : "var(--text-3)",
-                  background: "none", border: "none", cursor: "pointer", padding: 0,
-                }}
-              >
-                {product.pinned ? "📌 Fijado" : "📌 Fijar"}
-              </button>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Acciones — fila 2: eliminar */}
-      <div style={{ padding: "4px 11px 10px", display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
-        {!confirm ? (
-          <button onClick={() => setConfirm(true)} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-            Eliminar
-          </button>
-        ) : (
-          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <span style={{ fontSize: 11, color: "var(--text-3)" }}>¿Seguro?</span>
-            <button onClick={onDelete} style={{ fontSize: 11, color: "var(--red)", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 600 }}>Sí</button>
-            <button onClick={() => setConfirm(false)} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>No</button>
+      {/* Info + acciones */}
+      <div style={{ flex: 1, padding: "10px 14px", display: "flex", flexDirection: "column", justifyContent: "space-between", minWidth: 0 }}>
+        <div>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 3 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.3, color: product.sold ? "var(--text-3)" : "var(--text)", textDecoration: product.sold ? "line-through" : "none", flex: 1, minWidth: 0 }}>
+              {product.title}
+            </span>
+            {product.featured && <span style={{ fontSize: 10, flexShrink: 0, background: "#fffbeb", color: "#d97706", border: "1px solid #fde68a", padding: "1px 6px", borderRadius: 4, fontWeight: 700 }}>⭐ Destacado</span>}
           </div>
-        )}
+          <div style={{ fontSize: 13, fontWeight: 700, color: product.sold ? "var(--text-3)" : "var(--green)", letterSpacing: -0.3, marginBottom: 6 }}>
+            {product.price}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+            <ExpiryBadge days={days} />
+            {product.sold && <span style={{ fontSize: 10, color: "var(--text-3)" }}>Vendido</span>}
+          </div>
+        </div>
+
+        {/* Acciones */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+          {isExpired ? (
+            onRenew && (
+              <button
+                onClick={async () => { setRenewing(true); await onRenew(); setRenewing(false); }}
+                disabled={renewing}
+                style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: "var(--green)", border: "none", borderRadius: 5, padding: "5px 12px", cursor: renewing ? "default" : "pointer", opacity: renewing ? 0.7 : 1 }}
+              >
+                {renewing ? "..." : "↺ Renovar 60 días"}
+              </button>
+            )
+          ) : (
+            <>
+              <Link href={`/editar/${product.id}`} style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: "var(--green)", borderRadius: 5, padding: "5px 12px", textDecoration: "none" }}>
+                ✏️ Editar
+              </Link>
+              <button onClick={onToggleSold} style={{ fontSize: 12, color: "var(--text-2)", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 5, padding: "5px 10px", cursor: "pointer" }}>
+                {product.sold ? "↩ Activar" : "✓ Vendido"}
+              </button>
+              {isBusiness && !product.sold && onTogglePinned && (
+                <button onClick={onTogglePinned} style={{ fontSize: 12, color: product.pinned ? "#d97706" : "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: product.pinned ? 700 : 400 }}>
+                  {product.pinned ? "📌 Fijado" : "📌 Fijar"}
+                </button>
+              )}
+            </>
+          )}
+          <div style={{ marginLeft: "auto" }}>
+            {!confirm ? (
+              <button onClick={() => setConfirm(true)} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                Eliminar
+              </button>
+            ) : (
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <span style={{ fontSize: 11, color: "var(--text-3)" }}>¿Seguro?</span>
+                <button onClick={onDelete} style={{ fontSize: 11, color: "var(--red)", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 600 }}>Sí</button>
+                <button onClick={() => setConfirm(false)} style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>No</button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

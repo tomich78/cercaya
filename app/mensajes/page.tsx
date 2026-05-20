@@ -1,11 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
 import { getCurrentUser, type LocalUser } from "../lib/auth";
 import { getUserConversations, isConversationUnread, type Conversation } from "../lib/messages";
 import { usePageTitle } from "../lib/usePageTitle";
+import { supabase } from "../lib/supabase";
 
 function timeAgo(iso: string): string {
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -23,27 +24,57 @@ export default function MensajesPage() {
   const [convs, setConvs] = useState<Conversation[]>([]);
   const [unreadMap, setUnreadMap] = useState<Map<number, boolean>>(new Map());
   const [ready, setReady] = useState(false);
+  const userRef = useRef<LocalUser | null>(null);
+
+  async function loadConversations(u: LocalUser) {
+    const conversations = await getUserConversations(u.id);
+    setConvs(conversations);
+    const map = new Map<number, boolean>();
+    await Promise.all(
+      conversations.map(async conv => {
+        const unread = await isConversationUnread(conv, u.id);
+        map.set(conv.id, unread);
+      })
+    );
+    setUnreadMap(map);
+  }
 
   useEffect(() => {
     (async () => {
       const u = await getCurrentUser();
       if (!u) { router.replace("/login?redirect=/mensajes"); return; }
       setUser(u);
-      const conversations = await getUserConversations(u.id);
-      setConvs(conversations);
-
-      const map = new Map<number, boolean>();
-      await Promise.all(
-        conversations.map(async conv => {
-          const unread = await isConversationUnread(conv, u.id);
-          map.set(conv.id, unread);
-        })
-      );
-      setUnreadMap(map);
-
+      userRef.current = u;
+      await loadConversations(u);
       setReady(true);
     })();
   }, [router]);
+
+  // Realtime — recarga la lista cuando llega un mensaje nuevo
+  useEffect(() => {
+    const channel = supabase
+      .channel("mensajes-list-realtime")
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "messages",
+      }, () => {
+        const u = userRef.current;
+        if (u) loadConversations(u);
+      })
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "conversations",
+      }, () => {
+        const u = userRef.current;
+        if (u) loadConversations(u);
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!ready) return (
     <div>
