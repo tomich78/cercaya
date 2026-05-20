@@ -10,7 +10,7 @@ import { getReviewsForSeller, type Review } from "../lib/reviews";
 import { useToast } from "../components/ToastProvider";
 import { usePageTitle } from "../lib/usePageTitle";
 import BotonPago from "../components/BotonPago";
-import { PRECIOS } from "../lib/pagos";
+import { PRECIOS, getPreciosDB } from "../lib/pagos";
 import { supabase } from "../lib/supabase";
 import ArgentinaAddressInput from "../components/ArgentinaAddressInput";
 
@@ -851,6 +851,11 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
   const [step, setStep] = useState<BizStep>("closed");
   const [saving, setSaving]   = useState(false);
   const [cuitErr, setCuitErr] = useState("");
+  const [precioNegocio, setPrecioNegocio] = useState(PRECIOS.negocio_mes);
+
+  useEffect(() => {
+    getPreciosDB().then(p => setPrecioNegocio(p.negocio_mes));
+  }, []);
 
   // Campos del formulario
   const [bName,  setBName]  = useState(user.businessName     ?? "");
@@ -960,7 +965,7 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
               Plan Negocio
             </div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 14 }}>
-              <span style={{ fontSize: 32, fontWeight: 800, color: "var(--text)", letterSpacing: -1 }}>${PRECIOS.negocio_mes.toLocaleString("es-AR")}</span>
+              <span style={{ fontSize: 32, fontWeight: 800, color: "var(--text)", letterSpacing: -1 }}>${precioNegocio.toLocaleString("es-AR")}</span>
               <span style={{ fontSize: 13, color: "var(--text-3)" }}>/ mes</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
@@ -985,7 +990,7 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
             userId={user.id}
             label="Activar Modo Negocio — 1 mes"
             descripcion="Pago único mensual · Se activa de inmediato"
-            precio={5000}
+            precio={precioNegocio}
           />
           <div style={{ fontSize: 11, color: "var(--text-3)", textAlign: "center", marginTop: 8 }}>
             Pagás con Mercado Pago · Tarjeta, débito o saldo MP
