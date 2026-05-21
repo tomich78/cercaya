@@ -973,6 +973,44 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
   const [bAddr,       setBAddr]       = useState(user.businessAddress ?? "");
   const [addrErr,     setAddrErr]     = useState("");
 
+  // Código promocional
+  const [showPromo,    setShowPromo]    = useState(false);
+  const [promoInput,   setPromoInput]   = useState("");
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoError,   setPromoError]   = useState("");
+  const [promoSuccess, setPromoSuccess] = useState("");
+
+  async function handleApplyPromo() {
+    const code = promoInput.trim().toUpperCase();
+    if (!code) return;
+    setPromoLoading(true);
+    setPromoError("");
+    setPromoSuccess("");
+    try {
+      const { supabase: sb } = await import("../lib/supabase");
+      const { data: { session } } = await sb.auth.getSession();
+      const res = await fetch("/api/promo", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ code, userId: user.id }),
+      });
+      const json = await res.json() as Record<string, unknown>;
+      if (!res.ok) {
+        setPromoError((json.error as string) ?? "Código inválido");
+      } else {
+        setPromoSuccess((json.message as string) ?? "¡Código activado!");
+        setPromoInput("");
+        onSaved(); // refresca el perfil para mostrar el badge de negocio
+      }
+    } catch {
+      setPromoError("Error de conexión. Intentá de nuevo.");
+    }
+    setPromoLoading(false);
+  }
+
 
   function generateSlug(name: string) {
     return name
@@ -1088,15 +1126,82 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
             </div>
           </div>
 
-          <BotonPago
-            tipo="negocio_mes"
-            userId={user.id}
-            label="Activar Modo Negocio — 1 mes"
-            descripcion="Pago único mensual · Se activa de inmediato"
-            precio={precioNegocio}
-          />
-          <div style={{ fontSize: 11, color: "var(--text-3)", textAlign: "center", marginTop: 8 }}>
-            Pagás con Mercado Pago · Tarjeta, débito o saldo MP
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <BotonPago
+              tipo="negocio_mes"
+              userId={user.id}
+              label="Activar Modo Negocio — 1 mes"
+              descripcion="Pago único mensual · Se activa de inmediato"
+              precio={precioNegocio}
+            />
+
+            {/* Código promocional */}
+            {promoSuccess ? (
+              <div style={{
+                display: "flex", alignItems: "center", gap: 8,
+                background: "var(--green-subtle)", border: "1px solid #c5e8dc",
+                borderRadius: 8, padding: "10px 14px",
+              }}>
+                <span style={{ fontSize: 18 }}>🎉</span>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--green)" }}>{promoSuccess}</div>
+              </div>
+            ) : showPromo ? (
+              <div>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <input
+                    value={promoInput}
+                    onChange={e => { setPromoInput(e.target.value.toUpperCase().replace(/\s/g, "")); setPromoError(""); }}
+                    onKeyDown={e => e.key === "Enter" && handleApplyPromo()}
+                    placeholder="Código promocional"
+                    maxLength={20}
+                    style={{
+                      flex: 1, padding: "8px 10px",
+                      border: `1px solid ${promoError ? "#dc2626" : "var(--border)"}`,
+                      borderRadius: 6, fontSize: 13, fontWeight: 600,
+                      fontFamily: "monospace", letterSpacing: 1,
+                      background: "var(--bg)", color: "var(--text)", outline: "none",
+                    }}
+                  />
+                  <button
+                    onClick={handleApplyPromo}
+                    disabled={promoLoading || !promoInput.trim()}
+                    style={{
+                      padding: "8px 14px", borderRadius: 6, border: "none",
+                      background: promoLoading || !promoInput.trim() ? "var(--border)" : "var(--green)",
+                      color: promoLoading || !promoInput.trim() ? "var(--text-3)" : "#fff",
+                      fontSize: 12, fontWeight: 600,
+                      cursor: promoLoading || !promoInput.trim() ? "default" : "pointer",
+                      whiteSpace: "nowrap" as const,
+                    }}
+                  >
+                    {promoLoading ? "..." : "Aplicar"}
+                  </button>
+                  <button
+                    onClick={() => { setShowPromo(false); setPromoInput(""); setPromoError(""); }}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: 18, lineHeight: 1, padding: "0 2px" }}
+                  >×</button>
+                </div>
+                {promoError && (
+                  <div style={{ fontSize: 11, color: "#dc2626", marginTop: 4 }}>⚠️ {promoError}</div>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowPromo(true)}
+                style={{
+                  background: "none", border: "none", cursor: "pointer",
+                  fontSize: 12, color: "var(--text-3)",
+                  textDecoration: "underline", textDecorationStyle: "dotted" as const,
+                  padding: 0, textAlign: "center" as const, width: "100%",
+                }}
+              >
+                🎟️ ¿Tenés un código promocional?
+              </button>
+            )}
+
+            <div style={{ fontSize: 11, color: "var(--text-3)", textAlign: "center" }}>
+              Pagás con Mercado Pago · Tarjeta, débito o saldo MP
+            </div>
           </div>
         </div>
       )}
