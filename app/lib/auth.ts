@@ -151,7 +151,7 @@ export async function resetPasswordForEmail(
     email.trim().toLowerCase(),
     { redirectTo },
   );
-  if (error) return { error: friendlyAuthError(error.message) };
+  if (error) return { error: `[debug] ${error.message}` };
   return { error: null };
 }
 
