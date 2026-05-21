@@ -35,12 +35,77 @@ interface ParsedRow {
   emoji:        string;
   condition:    "Nuevo" | "Usado";
   description:  string;
-  location:     string;
+  location:     string;       // texto original del Excel
+  locationNorm: string;       // nombre normalizado por la API georef
+  lat:          number;       // coordenadas resueltas
+  lng:          number;
   negotiable:   boolean;
   delivery:     "retiro" | "envio" | "ambos";
   phone:        string;
   stock:        number;
   errors:       string[];
+}
+
+// ── Resolución de ubicaciones (API georef Argentina) ──────────────────────────
+
+interface GeoLoc {
+  id: string;
+  nombre: string;
+  provincia: { nombre: string };
+  centroide: { lat: number; lon: number };
+}
+
+// Alias comunes que los usuarios escriben en el Excel
+const PROV_ALIASES: Record<string, string> = {
+  "caba":              "ciudad autónoma de buenos aires",
+  "capital federal":   "ciudad autónoma de buenos aires",
+  "capital":           "ciudad autónoma de buenos aires",
+  "cdmx":              "ciudad autónoma de buenos aires",
+  "bs as":             "buenos aires",
+  "bsas":              "buenos aires",
+  "gba":               "buenos aires",
+  "pba":               "buenos aires",
+};
+
+async function resolveLocation(raw: string): Promise<{
+  ok: boolean; normalized: string; lat: number; lng: number;
+}> {
+  const trimmed = raw.trim();
+  if (!trimmed) return { ok: false, normalized: "", lat: 0, lng: 0 };
+
+  const parts   = trimmed.split(",").map(s => s.trim());
+  const name    = parts[0];
+  const provRaw = (parts[1] ?? "").toLowerCase();
+  const prov    = PROV_ALIASES[provRaw] ?? provRaw;
+
+  async function query(nombre: string, provincia?: string): Promise<GeoLoc[]> {
+    const params = new URLSearchParams({ nombre, max: "8", campos: "id,nombre,provincia.nombre,centroide" });
+    if (provincia) params.set("provincia", provincia);
+    try {
+      const res = await fetch(`https://apis.datos.gob.ar/georef/api/localidades?${params.toString()}`);
+      if (!res.ok) return [];
+      const json = await res.json() as { localidades?: GeoLoc[] };
+      return json.localidades ?? [];
+    } catch {
+      return [];
+    }
+  }
+
+  // 1er intento: con provincia
+  let locs = prov ? await query(name, prov) : await query(name);
+  // 2do intento: solo por nombre (sin provincia), por si el alias no funcionó
+  if (!locs.length && prov) locs = await query(name);
+
+  if (!locs.length) return { ok: false, normalized: trimmed, lat: 0, lng: 0 };
+
+  // Preferir coincidencia exacta de nombre; si no, tomar el primero
+  const exact = locs.find(l => l.nombre.toLowerCase() === name.toLowerCase()) ?? locs[0];
+  return {
+    ok:         true,
+    normalized: `${exact.nombre}, ${exact.provincia.nombre}`,
+    lat:        exact.centroide.lat,
+    lng:        exact.centroide.lon,
+  };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -92,6 +157,9 @@ function parseRows(sheet: unknown[][]): ParsedRow[] {
         condition:    condition === "Nuevo" ? "Nuevo" : "Usado",
         description,
         location,
+        locationNorm: "",   // se rellena en la validación async
+        lat:          0,
+        lng:          0,
         negotiable:   ["sí", "si", "yes", "1", "true"].includes(negotiable),
         delivery:     (VALID_DELIVERY as readonly string[]).includes(delivery)
                         ? (delivery as "retiro" | "envio" | "ambos")
@@ -115,10 +183,11 @@ export default function ExcelUpload({
   const { toast } = useToast();
   const fileRef   = useRef<HTMLInputElement>(null);
 
-  const [rows,      setRows]     = useState<ParsedRow[]>([]);
-  const [step,      setStep]     = useState<"idle" | "preview">("idle");
-  const [loading,   setLoading]  = useState(false);
-  const [progress,  setProgress] = useState(0);
+  const [rows,       setRows]      = useState<ParsedRow[]>([]);
+  const [step,       setStep]      = useState<"idle" | "preview">("idle");
+  const [loading,    setLoading]   = useState(false);
+  const [validating, setValidating] = useState(false);
+  const [progress,   setProgress]  = useState(0);
   const [submitting, setSubmitting] = useState(false);
   // Fotos por fila: clave = row.idx
   const [rowPhotos, setRowPhotos] = useState<Map<number, File[]>>(new Map());
@@ -160,7 +229,7 @@ export default function ExcelUpload({
       ["Emoji",              "Cualquier emoji que represente el producto",            "No (se asigna uno por defecto)"],
       ["Condición",          "Nuevo | Usado",                                         "No (default: Usado)"],
       ["Descripción",        "Texto libre, máx. 800 caracteres",                     "Sí"],
-      ["Ubicación",          "Ej: Palermo, CABA",                                    "Sí"],
+      ["Ubicación",          "Ciudad o barrio + Provincia  (ej: Rosario, Santa Fe  /  Palermo, CABA  /  Córdoba, Córdoba)", "Sí"],
       ["Negociable",         "Sí | No",                                              "No (default: No)"],
       ["Entrega",            "retiro | envio | ambos",                               "No (default: retiro)"],
       ["Teléfono/WhatsApp",  "Solo números, sin espacios ni guiones (ej: 1123456789)", "No"],
@@ -188,14 +257,32 @@ export default function ExcelUpload({
 
       if (parsed.length === 0) {
         toast("El archivo no tiene filas con datos.", "error");
-      } else {
-        setRows(parsed);
-        setStep("preview");
+        setLoading(false);
+        return;
       }
+
+      // Validar ubicaciones contra la API georef de Argentina
+      setLoading(false);
+      setValidating(true);
+      const withLocations = await Promise.all(
+        parsed.map(async row => {
+          // Si ya tiene error de ubicación vacía, no consultar la API
+          if (!row.location) return row;
+          const geo = await resolveLocation(row.location);
+          const errors = row.errors.filter(e => !e.startsWith("Ubicación"));
+          if (!geo.ok) {
+            errors.push(`Ubicación no encontrada — escribí "Ciudad, Provincia" (ej: "Rosario, Santa Fe")`);
+          }
+          return { ...row, locationNorm: geo.normalized, lat: geo.lat, lng: geo.lng, errors };
+        })
+      );
+      setValidating(false);
+      setRows(withLocations);
+      setStep("preview");
     } catch {
       toast("No se pudo leer el archivo. Usá la plantilla original.", "error");
-    } finally {
       setLoading(false);
+      setValidating(false);
     }
   }
 
@@ -227,7 +314,9 @@ export default function ExcelUpload({
           category:    p.category,
           emoji:       p.emoji,
           description: p.description,
-          location:    p.location,
+          location:    p.locationNorm || p.location,
+          lat:         p.lat || undefined,
+          lng:         p.lng || undefined,
           condition:   p.condition,
           images:      imageUrls,
           distance:    "Cerca tuyo",
@@ -302,7 +391,7 @@ export default function ExcelUpload({
           />
           <button
             onClick={() => fileRef.current?.click()}
-            disabled={loading}
+            disabled={loading || validating}
             style={{
               marginTop: 12, width: "100%",
               display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10,
@@ -322,8 +411,10 @@ export default function ExcelUpload({
               (e.currentTarget as HTMLButtonElement).style.color = "var(--text-3)";
             }}
           >
-            {loading ? (
-              <span style={{ fontSize: 13 }}>Procesando archivo...</span>
+            {loading || validating ? (
+              <span style={{ fontSize: 13 }}>
+                {validating ? "Validando ubicaciones..." : "Procesando archivo..."}
+              </span>
             ) : (
               <>
                 <UploadIcon />
@@ -526,7 +617,12 @@ function ProductPreviewCard({
                   <span style={{ fontSize: 11, color: "var(--text-3)" }}>
                     {row.condition} · {row.category}
                   </span>
-                  <span style={{ fontSize: 11, color: "var(--text-3)" }}>📍 {row.location}</span>
+                  <span style={{ fontSize: 11, color: row.locationNorm ? "var(--green)" : "var(--text-3)" }}>
+                    📍 {row.locationNorm || row.location}
+                    {row.locationNorm && row.locationNorm !== row.location && (
+                      <span style={{ opacity: 0.6 }}> ✓</span>
+                    )}
+                  </span>
                   <span style={{ fontSize: 11, color: "var(--text-3)" }}>{deliveryLabel[row.delivery]}</span>
                   {row.stock > 1 && (
                     <span style={{ fontSize: 11, color: "var(--text-3)" }}>Stock: {row.stock}</span>

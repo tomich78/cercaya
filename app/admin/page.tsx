@@ -843,11 +843,14 @@ function CodigosTab() {
   useEffect(() => { loadCodes(); }, []);
 
   async function loadCodes() {
-    const { data } = await supabase
-      .from("promo_codes")
-      .select("code, note, uses, max_uses, duration_days, expires_at, active, created_at")
-      .order("created_at", { ascending: false });
-    setRows((data ?? []).map(r => ({
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { setLoading(false); return; }
+    const res = await fetch("/api/admin?action=promo_codes", {
+      headers: { "Authorization": `Bearer ${session.access_token}` },
+    });
+    if (!res.ok) { setLoading(false); return; }
+    const json = await res.json() as { codes?: Record<string, unknown>[] };
+    setRows((json.codes ?? []).map(r => ({
       code:         r.code as string,
       note:         r.note as string | null,
       uses:         (r.uses as number) ?? 0,

@@ -36,6 +36,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ users: data ?? [] });
   }
 
+  // GET /api/admin?action=promo_codes  →  lista de códigos promo (bypasa RLS)
+  if (action === "promo_codes") {
+    const { data, error } = await supabaseAdmin
+      .from("promo_codes")
+      .select("code, note, uses, max_uses, duration_days, expires_at, active, created_at")
+      .order("created_at", { ascending: false });
+    if (error) {
+      console.error("Admin promo_codes query error:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ codes: data ?? [] });
+  }
+
   return NextResponse.json({ isAdmin: true });
 }
 
@@ -108,11 +121,11 @@ export async function POST(req: NextRequest) {
           .delete()
           .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`);
 
-        // 4. Reviews dadas o recibidas
+        // 4. Reviews dadas o recibidas (la tabla usa seller_id para el revisado)
         await supabaseAdmin
           .from("reviews")
           .delete()
-          .or(`reviewer_id.eq.${userId},reviewed_id.eq.${userId}`);
+          .or(`reviewer_id.eq.${userId},seller_id.eq.${userId}`);
 
         // 5. Usos de códigos promocionales
         await supabaseAdmin.from("promo_code_uses").delete().eq("user_id", userId);
@@ -147,15 +160,15 @@ export async function POST(req: NextRequest) {
           max_uses:      p.maxUses ?? null,
           duration_days: p.durationDays ?? 30,
           expires_at:    p.expiresAt   || null,
-          type:          "negocio_mes",
           uses:          0,
           active:        true,
         });
         if (error) {
+          console.error("create_promo_code error:", error);
           if (error.code === "23505") {
             return NextResponse.json({ error: "Ese código ya existe" }, { status: 409 });
           }
-          throw error;
+          return NextResponse.json({ error: error.message }, { status: 500 });
         }
         return NextResponse.json({ ok: true });
       }

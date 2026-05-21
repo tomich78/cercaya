@@ -50,7 +50,7 @@ export default function Footer() {
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <FooterLink href="/nosotros">Nosotros</FooterLink>
                 <FooterLink href="/ayuda">Ayuda</FooterLink>
-                <FooterLink href="mailto:hola@estamosCerca.com.ar">Contacto</FooterLink>
+                <FooterLink href="mailto:hola@EstamosCerca.com.ar">Contacto</FooterLink>
                 <FooterLink href="/anunciar">Publicidad</FooterLink>
               </div>
             </div>
@@ -74,7 +74,7 @@ export default function Footer() {
           justifyContent: "space-between", alignItems: "center",
         }}>
           <div style={{ fontSize: 12, color: "var(--text-3)" }}>
-            © {year} estamosCerca. Hecho en Argentina 🇦🇷
+            © {year} EstamosCerca. Hecho en Argentina 🇦🇷
           </div>
 
           {/* Redes sociales */}
