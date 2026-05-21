@@ -1003,7 +1003,8 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
       } else {
         setPromoSuccess((json.message as string) ?? "¡Código activado!");
         setPromoInput("");
-        onSaved(); // refresca el perfil para mostrar el badge de negocio
+        setStep("form");  // abre el formulario de datos del negocio
+        onSaved();        // refresca el perfil del padre
       }
     } catch {
       setPromoError("Error de conexión. Intentá de nuevo.");
