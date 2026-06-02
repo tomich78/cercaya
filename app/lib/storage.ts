@@ -74,57 +74,35 @@ function rowToProduct(row: Record<string, unknown>): LocalProduct {
 }
 
 export async function getLocalProducts(options?: { includeSold?: boolean; includeExpired?: boolean }): Promise<LocalProduct[]> {
+  // Join con profiles en una sola query (elimina el segundo round trip)
   let query = supabase
     .from("products")
-    .select("*")
-    .order("featured",    { ascending: false })
-    .order("created_at",  { ascending: false });
+    .select("*, profiles!user_id (is_business, business_cuit_verified, business_slug)")
+    .order("featured",   { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(400);
 
-  // Por defecto excluir productos vendidos del feed principal
   if (!options?.includeSold) {
     query = query.eq("sold", false);
   }
 
-  // Por defecto excluir publicaciones vencidas del feed
   if (!options?.includeExpired) {
     query = query.or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
   }
 
   const { data, error } = await query;
   if (error || !data) return [];
-  const products = data.map(rowToProduct);
 
-  // Traer info de negocio de todos los vendedores en una sola query
-  const userIds = [...new Set(products.map(p => p.userId).filter(Boolean))] as string[];
-  if (userIds.length > 0) {
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id, is_business, business_cuit_verified, business_slug")
-      .in("id", userIds);
-    if (profiles) {
-      const bizMap = new Map(
-        profiles.map(p => [
-          p.id as string,
-          {
-            isBusiness:   (p.is_business as boolean) ?? false,
-            cuitVerified: (p.business_cuit_verified as boolean) ?? false,
-            slug:         p.business_slug as string | undefined,
-          },
-        ]),
-      );
-      return products.map(p =>
-        p.userId && bizMap.has(p.userId)
-          ? {
-              ...p,
-              sellerIsBusiness:    bizMap.get(p.userId)!.isBusiness,
-              sellerCuitVerified:  bizMap.get(p.userId)!.cuitVerified,
-              sellerBusinessSlug:  bizMap.get(p.userId)!.slug,
-            }
-          : p,
-      );
+  return data.map(row => {
+    const prof = row.profiles as { is_business?: boolean; business_cuit_verified?: boolean; business_slug?: string } | null;
+    const product = rowToProduct(row as Record<string, unknown>);
+    if (prof) {
+      product.sellerIsBusiness   = prof.is_business   ?? false;
+      product.sellerCuitVerified = prof.business_cuit_verified ?? false;
+      product.sellerBusinessSlug = prof.business_slug;
     }
-  }
-  return products;
+    return product;
+  });
 }
 
 export async function getProductById(id: number): Promise<LocalProduct | null> {

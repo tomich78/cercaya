@@ -27,23 +27,37 @@ interface Product {
   attributes?: Record<string, unknown>;
 }
 
-export default function ProductCard({ product }: { product: Product }) {
+interface ProductCardProps {
+  product: Product;
+  /** ID del usuario logueado — se pasa desde el padre para evitar queries repetidas */
+  userId?: string | null;
+  /** Set de IDs de productos favoritos del usuario — se pasa desde el padre */
+  favIds?: Set<number>;
+}
+
+export default function ProductCard({ product, userId, favIds }: ProductCardProps) {
   const router    = useRouter();
   const { toast } = useToast();
-  const [fav, setFav] = useState(false);
+  const [fav, setFav] = useState(() => favIds?.has(product.id) ?? false);
 
+  // Solo consulta la DB si el padre no pasó los datos de favoritos
   useEffect(() => {
+    if (favIds !== undefined) {
+      setFav(favIds.has(product.id));
+      return;
+    }
     getCurrentUser().then(u => {
       if (u) isFavorite(u.id, product.id).then(setFav);
     });
-  }, [product.id]);
+  }, [product.id, favIds]);
 
   async function handleFav(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    const user = await getCurrentUser();
-    if (!user) { router.push("/login"); return; }
-    const next = await toggleFavorite(user.id, product.id);
+    // Usar userId del prop si está disponible (evita otra query)
+    const uid = userId ?? (await getCurrentUser())?.id;
+    if (!uid) { router.push("/login"); return; }
+    const next = await toggleFavorite(uid, product.id);
     setFav(next);
     toast(next ? "Guardado en tu lista ♡" : "Eliminado de guardados", next ? "success" : "info");
   }
@@ -102,6 +116,8 @@ export default function ProductCard({ product }: { product: Product }) {
             <img
               src={product.images[0]}
               alt={product.title}
+              loading="lazy"
+              decoding="async"
               style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
             />
           ) : (

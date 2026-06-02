@@ -11,6 +11,7 @@ import AdSlot from "./components/AdSlot";
 import { LISTING_TYPES, PRODUCT_CATEGORIES, SERVICE_CATEGORIES, PROPERTY_TYPES, VEHICLE_TYPES, type ListingType } from "./data";
 import { getLocalProducts, type LocalProduct } from "./lib/storage";
 import { getCurrentUser, type LocalUser } from "./lib/auth";
+import { getFavorites } from "./lib/favorites";
 import { haversineKm, formatDistance } from "./lib/geo";
 import { createAlert, alertExists } from "./lib/alerts";
 import { usePageTitle } from "./lib/usePageTitle";
@@ -34,6 +35,7 @@ function HomeInner() {
   usePageTitle(search ? `"${search}" — Búsqueda` : undefined);
   const [localProducts,  setLocalProducts]  = useState<LocalProduct[] | null>(null);
   const [currentUser,    setCurrentUser]    = useState<LocalUser | null>(null);
+  const [favIds,         setFavIds]         = useState<Set<number>>(new Set());
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Alertas de búsqueda
@@ -106,6 +108,8 @@ function HomeInner() {
     getCurrentUser().then(u => {
       setCurrentUser(u);
       if (u?.lat && u?.lng) { setUserLat(u.lat); setUserLng(u.lng); }
+      // Cargar todos los favoritos de una vez (1 query en vez de N)
+      if (u) getFavorites(u.id).then(ids => setFavIds(new Set(ids)));
 
       // Pedir geolocalización del browser en segundo plano
       if (!navigator.geolocation) return;
@@ -804,7 +808,7 @@ function HomeInner() {
           {loading
             ? Array.from({ length: PAGE_SIZE }).map((_, i) => <ProductCardSkeleton key={i} />)
             : visibleProducts.flatMap(({ _km: _ignored, ...p }, idx) => {
-                const items = [<ProductCard key={p.id} product={p} />];
+                const items = [<ProductCard key={p.id} product={p} userId={currentUser?.id} favIds={favIds} />];
                 if ((idx + 1) % 4 === 0) {
                   items.push(<AdSlot key={`ad-${idx}`} />);
                 }

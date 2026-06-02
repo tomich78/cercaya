@@ -207,12 +207,25 @@ export async function login(
 }
 
 export async function logout(): Promise<void> {
+  clearUserCache();
   await supabase.auth.signOut();
 }
 
+// ── Caché en memoria del usuario actual ──────────────────────
+let _userCache: LocalUser | null = null;
+let _userCacheAt = 0;
+const USER_CACHE_TTL = 60_000; // 1 minuto
+
+export function clearUserCache(): void {
+  _userCache = null;
+  _userCacheAt = 0;
+}
+
 export async function getCurrentUser(): Promise<LocalUser | null> {
+  if (_userCache && Date.now() - _userCacheAt < USER_CACHE_TTL) return _userCache;
+
   const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) return null;
+  if (!authUser) { _userCache = null; return null; }
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -220,8 +233,10 @@ export async function getCurrentUser(): Promise<LocalUser | null> {
     .eq("id", authUser.id)
     .single();
 
-  if (!profile) return null;
-  return rowToUser(profile, authUser.email ?? "");
+  if (!profile) { _userCache = null; return null; }
+  _userCache = rowToUser(profile, authUser.email ?? "");
+  _userCacheAt = Date.now();
+  return _userCache;
 }
 
 export async function uploadAvatar(userId: string, file: File): Promise<string> {
@@ -283,6 +298,7 @@ export async function updateUser(
   if (updates.businessCoverUrl    !== undefined) row.business_cover_url      = updates.businessCoverUrl;
   if (updates.businessAddress     !== undefined) row.business_address        = updates.businessAddress;
   await supabase.from("profiles").update(row).eq("id", userId);
+  clearUserCache(); // invalidar caché tras actualizar perfil
 }
 
 // ── Business cover upload ─────────────────────────────────────
