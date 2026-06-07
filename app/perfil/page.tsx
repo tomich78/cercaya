@@ -837,104 +837,117 @@ export default function PerfilPage() {
 function BusinessStats({ userId }: { userId: string }) {
   const [stats,   setStats]   = useState<BusinessStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [open,    setOpen]    = useState(false);
 
   useEffect(() => {
-    if (!open || stats) return;
     getBusinessStats(userId).then(s => { setStats(s); setLoading(false); });
-  }, [open, userId, stats]);
+  }, [userId]);
 
   const METRICS = stats ? [
-    { icon: "👁️", label: "Vistas en productos",  value: stats.totalViews.toLocaleString("es-AR"),    color: "var(--green)" },
-    { icon: "🏪", label: "Visitas a tu página",   value: stats.pageViews.toLocaleString("es-AR"),     color: "#7c3aed" },
-    { icon: "💬", label: "Consultas recibidas",   value: stats.totalMessages.toLocaleString("es-AR"), color: "var(--blue)" },
-    { icon: "📦", label: "Productos vendidos",    value: stats.totalSold.toLocaleString("es-AR"),      color: "var(--amber)" },
+    {
+      label: "Vistas en productos", value: stats.totalViews, color: "var(--green)", bg: "var(--green-subtle)",
+      icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
+    },
+    {
+      label: "Visitas a tu página", value: stats.pageViews, color: "#7c3aed", bg: "#f5f3ff",
+      icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+    },
+    {
+      label: "Consultas recibidas", value: stats.totalMessages, color: "#2563eb", bg: "#eff6ff",
+      icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
+    },
+    {
+      label: "Productos vendidos", value: stats.totalSold, color: "#d97706", bg: "#fffbeb",
+      icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><path d="M12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/></svg>,
+    },
   ] : [];
 
+  if (loading) {
+    return (
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        {[1,2,3,4].map(i => (
+          <div key={i} className="skeleton" style={{ height: 88, borderRadius: 10 }} />
+        ))}
+      </div>
+    );
+  }
+
+  if (!stats) return null;
+
   return (
-    <div style={{ marginTop: 14, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-          background: "none", border: "none", cursor: "pointer", padding: 0,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
-          <span>📊</span> Estadísticas
-        </div>
-        <svg
-          width="14" height="14" viewBox="0 0 24 24" fill="none"
-          stroke="var(--text-3)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-          style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}
-        >
-          <polyline points="6 9 12 15 18 9"/>
-        </svg>
-      </button>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-      {open && (
-        <div style={{ marginTop: 14 }}>
-          {loading ? (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              {[1,2,3,4].map(i => (
-                <div key={i} className="skeleton" style={{ height: 72, borderRadius: 8 }} />
-              ))}
+      {/* Grid de métricas */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        {METRICS.map(m => (
+          <div key={m.label} style={{
+            background: m.bg,
+            border: `1px solid ${m.color}22`,
+            borderRadius: 10, padding: "14px 16px",
+          }}>
+            <div style={{ color: m.color, marginBottom: 8 }}>{m.icon}</div>
+            <div style={{ fontSize: 26, fontWeight: 800, color: m.color, letterSpacing: -1, lineHeight: 1 }}>
+              {m.value.toLocaleString("es-AR")}
             </div>
-          ) : stats ? (
-            <>
-              {/* Grid de métricas */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-                {METRICS.map(m => (
-                  <div key={m.label} style={{
-                    background: "var(--bg)", border: "1px solid var(--border)",
-                    borderRadius: 8, padding: "12px 14px",
-                  }}>
-                    <div style={{ fontSize: 18, marginBottom: 4 }}>{m.icon}</div>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: m.color, letterSpacing: -0.5, lineHeight: 1 }}>
-                      {m.value}
-                    </div>
-                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3 }}>{m.label}</div>
-                  </div>
-                ))}
-              </div>
+            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4, lineHeight: 1.3 }}>{m.label}</div>
+          </div>
+        ))}
+      </div>
 
-              {/* Publicaciones activas */}
-              <div style={{
-                background: "var(--bg)", border: "1px solid var(--border)",
-                borderRadius: 8, padding: "10px 14px",
-                display: "flex", justifyContent: "space-between", alignItems: "center",
-                marginBottom: stats.topProduct ? 8 : 0,
-              }}>
-                <span style={{ fontSize: 12, color: "var(--text-2)" }}>Publicaciones activas</span>
-                <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{stats.activeListings}</span>
-              </div>
+      {/* Fila inferior: activas + conversión */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div style={{
+          background: "var(--bg)", border: "1px solid var(--border)",
+          borderRadius: 10, padding: "12px 16px",
+          display: "flex", flexDirection: "column", gap: 4,
+        }}>
+          <div style={{ fontSize: 11, color: "var(--text-3)" }}>Publicaciones activas</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", letterSpacing: -0.5 }}>
+            {stats.activeListings}
+          </div>
+        </div>
+        <div style={{
+          background: "var(--bg)", border: "1px solid var(--border)",
+          borderRadius: 10, padding: "12px 16px",
+          display: "flex", flexDirection: "column", gap: 4,
+        }}>
+          <div style={{ fontSize: 11, color: "var(--text-3)" }}>Tasa de consulta</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", letterSpacing: -0.5 }}>
+            {stats.totalViews > 0
+              ? `${((stats.totalMessages / stats.totalViews) * 100).toFixed(1)}%`
+              : "—"}
+          </div>
+          <div style={{ fontSize: 10, color: "var(--text-3)" }}>consultas / vistas</div>
+        </div>
+      </div>
 
-              {/* Producto más visto */}
-              {stats.topProduct && stats.topProduct.views > 0 && (
-                <div style={{
-                  background: "var(--bg)", border: "1px solid var(--border)",
-                  borderRadius: 8, padding: "10px 14px",
-                  display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10,
-                }}>
-                  <div>
-                    <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 2 }}>🥇 Producto más visto</div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", lineHeight: 1.3 }}>
-                      {stats.topProduct.title}
-                    </div>
-                  </div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--green)", flexShrink: 0 }}>
-                    {stats.topProduct.views} vistas
-                  </div>
-                </div>
-              )}
-
-              <div style={{ fontSize: 11, color: "var(--text-3)", textAlign: "center", marginTop: 10 }}>
-                Las estadísticas se actualizan en tiempo real
-              </div>
-            </>
-          ) : null}
+      {/* Producto más visto */}
+      {stats.topProduct && stats.topProduct.views > 0 && (
+        <div style={{
+          background: "var(--bg)", border: "1px solid var(--border)",
+          borderRadius: 10, padding: "12px 16px",
+          display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12,
+        }}>
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 600, color: "var(--green)", textTransform: "uppercase" as const, letterSpacing: 0.5, marginBottom: 3 }}>
+              Producto más visto
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", lineHeight: 1.3 }}>
+              {stats.topProduct.title}
+            </div>
+          </div>
+          <div style={{
+            fontSize: 15, fontWeight: 800, color: "var(--green)",
+            background: "var(--green-subtle)", padding: "4px 10px",
+            borderRadius: 6, flexShrink: 0, whiteSpace: "nowrap" as const,
+          }}>
+            {stats.topProduct.views} vistas
+          </div>
         </div>
       )}
+
+      <div style={{ fontSize: 11, color: "var(--text-3)", textAlign: "center" as const }}>
+        Actualizado en tiempo real
+      </div>
     </div>
   );
 }
@@ -1590,8 +1603,6 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
         </div>
       )}
 
-      {/* Estadísticas — visibles siempre que el negocio esté activo */}
-      {user.businessPaid && <BusinessStats userId={user.id} />}
     </div>
   );
 }
