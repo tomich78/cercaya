@@ -950,7 +950,8 @@ type BizStep = "closed" | "pricing" | "form";
 
 function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => void }) {
   // Ya pagó → empieza directo en form si está abierto
-  const [step, setStep] = useState<BizStep>("closed");
+  // Empieza expandido: en "form" si ya pagó, en "pricing" si no
+  const [step, setStep] = useState<BizStep>(user.businessPaid ? "form" : "pricing");
   const [saving, setSaving]   = useState(false);
   const [cuitErr, setCuitErr] = useState("");
   const [precioNegocio, setPrecioNegocio] = useState<number>(PRECIOS.negocio_mes);
@@ -1087,10 +1088,11 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
             </div>
           </div>
         </div>
-        {step === "closed"
-          ? <button onClick={handleOpen} style={actionBtn}>{user.businessPaid ? "Editar" : "Activar"}</button>
-          : <button onClick={() => setStep("closed")} style={actionBtn}>Cerrar</button>
-        }
+        {user.businessPaid && (
+          <button onClick={() => setStep(s => s === "form" ? "pricing" : "form")} style={actionBtn}>
+            {step === "form" ? "Ver planes" : "Editar datos"}
+          </button>
+        )}
       </div>
 
       {/* ── STEP: pricing ── */}

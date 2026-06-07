@@ -9,15 +9,15 @@ export const metadata: Metadata = {
   title: "EstamosCerca — Compra y vende cerca tuyo",
   description: "Comprá y vendé productos cerca tuyo. Conectamos vecinos del mismo barrio sin envíos ni comisiones.",
   icons: {
-    icon: "/Logo.png",
-    apple: "/Logo.png",
+    icon: "/icon.png",
+    apple: "/icon.png",
   },
   openGraph: {
     title: "EstamosCerca — Compra y vende cerca tuyo",
     description: "Comprá y vendé productos cerca tuyo. Conectamos vecinos del mismo barrio sin envíos ni comisiones.",
     url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://estamoscerca.com.ar",
     siteName: "EstamosCerca",
-    images: [{ url: "/Logo.png", width: 512, height: 512, alt: "EstamosCerca" }],
+    images: [{ url: "/logo.png", width: 800, height: 400, alt: "EstamosCerca" }],
     locale: "es_AR",
     type: "website",
   },

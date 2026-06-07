@@ -51,6 +51,7 @@ function RegistroForm() {
   const [errors, setErrors]           = useState<Record<string, string>>({});
   const [globalError, setGlobalError] = useState("");
   const [loading, setLoading]         = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm,  setShowConfirm]  = useState(false);
   const [registered,   setRegistered]  = useState(false);
@@ -82,6 +83,7 @@ function RegistroForm() {
     else if (form.confirm !== form.password) e.confirm = "Las contraseñas no coinciden";
     if (!form.location.trim()) e.location = "Obligatorio";
     else if (!locationLat)     e.location = "Elegí una ubicación de la lista";
+    if (!termsAccepted)        e.terms    = "Debés aceptar los términos para continuar";
     return e;
   }
 
@@ -461,6 +463,31 @@ function RegistroForm() {
               <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 5 }}>
                 Se usa para mostrarte productos cercanos.
               </div>
+            </div>
+
+            {/* Términos y condiciones */}
+            <div>
+              <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={e => { setTermsAccepted(e.target.checked); if (errors.terms) setErrors(er => ({ ...er, terms: "" })); }}
+                  style={{ marginTop: 2, accentColor: "var(--green)", width: 15, height: 15, flexShrink: 0 }}
+                />
+                <span style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.5 }}>
+                  Acepto los{" "}
+                  <Link href="/terminos" target="_blank" style={{ color: "var(--green)", fontWeight: 500 }}>
+                    Términos y condiciones
+                  </Link>{" "}
+                  y la{" "}
+                  <Link href="/privacidad" target="_blank" style={{ color: "var(--green)", fontWeight: 500 }}>
+                    Política de privacidad
+                  </Link>
+                </span>
+              </label>
+              {errors.terms && (
+                <div style={{ fontSize: 12, color: "#dc2626", marginTop: 5 }}>{errors.terms}</div>
+              )}
             </div>
 
             <button

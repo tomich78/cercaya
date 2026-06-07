@@ -20,6 +20,7 @@ interface Product {
   images?: string[];
   condition?: "Nuevo" | "Usado";
   featured?: boolean;
+  category?: string;
   sellerIsBusiness?: boolean;
   sellerCuitVerified?: boolean;
   sellerBusinessSlug?: string;
@@ -102,12 +103,11 @@ export default function ProductCard({ product, userId, favIds }: ProductCardProp
 
         {/* Imagen */}
         <div style={{
-          background: product.bg,
+          background: product.bg || "var(--bg)",
           height: product.featured ? 116 : 128,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 44,
           position: "relative",
           overflow: "hidden",
         }}>
@@ -118,10 +118,12 @@ export default function ProductCard({ product, userId, favIds }: ProductCardProp
               alt={product.title}
               loading="lazy"
               decoding="async"
-              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", transition: "opacity 0.2s" }}
+              onLoad={e => { (e.currentTarget as HTMLImageElement).style.opacity = "1"; }}
+              onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
             />
           ) : (
-            product.emoji
+            <CategoryPlaceholder listingType={product.listingType} category={product.category} />
           )}
 
           {/* Badge condición (solo para productos) */}
@@ -273,6 +275,63 @@ export default function ProductCard({ product, userId, favIds }: ProductCardProp
             </div>
           )}
         </div>
+    </div>
+  );
+}
+
+// ── Placeholder minimalista cuando no hay imagen ────────────────
+function CategoryPlaceholder({ listingType, category }: { listingType?: string; category?: string }) {
+  const type = listingType ?? "product";
+
+  // Íconos SVG limpios por tipo de publicación
+  const icons: Record<string, React.ReactNode> = {
+    product: (
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/>
+      </svg>
+    ),
+    service: (
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
+      </svg>
+    ),
+    property: (
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+    ),
+    vehicle: (
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+      </svg>
+    ),
+  };
+
+  // Color de fondo sutil según categoría o tipo
+  const bgColors: Record<string, string> = {
+    product: "#f0fdf4", service: "#eff6ff", property: "#f5f3ff", vehicle: "#fff7ed",
+  };
+
+  const iconColors: Record<string, string> = {
+    product: "#16a34a", service: "#2563eb", property: "#7c3aed", vehicle: "#ea580c",
+  };
+
+  // Inicial de la categoría como fallback secundario
+  const initial = category?.charAt(0)?.toUpperCase() ?? "?";
+
+  return (
+    <div style={{
+      width: "100%", height: "100%",
+      background: bgColors[type] ?? "#f9fafb",
+      display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center",
+      gap: 6,
+      color: iconColors[type] ?? "#9ca3af",
+    }}>
+      {icons[type] ?? icons.product}
+      <span style={{ fontSize: 10, fontWeight: 500, color: iconColors[type] ?? "#9ca3af", opacity: 0.7, letterSpacing: 0.3 }}>
+        {initial && type === "product" ? category?.slice(0, 14) : ""}
+      </span>
     </div>
   );
 }

@@ -75,8 +75,12 @@ export default function Navbar() {
       top: 0,
       zIndex: 100,
     }}>
-      <Link href="/" style={{ fontSize: 17, fontWeight: 600, letterSpacing: -0.5, color: "var(--text)" }}>
-        estamos<span style={{ color: "var(--green)" }}>cerca</span>
+      <Link href="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/icon.png" alt="EstamosCerca" style={{ height: 32, width: "auto" }} />
+        <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: -0.4, color: "var(--text)" }}>
+          Estamos<span style={{ color: "var(--green)" }}>Cerca</span>
+        </span>
       </Link>
 
       <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
