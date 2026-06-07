@@ -852,8 +852,8 @@ function HomeInner() {
           </div>
         )}
 
-        {/* Sentinel siempre montado (el observer ignora si no hay más) */}
-        {!loading && <div ref={sentinelRef} style={{ height: 1 }} />}
+        {/* Sentinel siempre montado — el observer callback no hace nada si filteredTotal=0 */}
+        <div ref={sentinelRef} style={{ height: 1 }} />
 
         {/* Skeletons de "cargando más" */}
         {!loading && hasMore && (
