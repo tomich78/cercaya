@@ -12,11 +12,10 @@
 ![Vercel](https://img.shields.io/badge/Vercel-black?style=flat-square&logo=vercel)
 
 ## Screenshots
-<img width="1879" height="894" alt="Publicacion" src="https://github.com/user-attachments/assets/1552fe47-8fa2-4c8e-a5b5-367c712669bd" />
-<img width="1894" height="898" alt="Negocio" src="https://github.com/user-attachments/assets/8f8766f9-1689-4502-801e-e715976abe6e" />
-<img width="1895" height="901" alt="Feed2" src="https://github.com/user-attachments/assets/1c87f197-94a6-4d43-a423-674509020989" />
 <img width="1892" height="907" alt="Feed" src="https://github.com/user-attachments/assets/f6bb4cd9-7d10-4698-b560-030a85dc848f" />
-
+<img width="1895" height="901" alt="Feed2" src="https://github.com/user-attachments/assets/1c87f197-94a6-4d43-a423-674509020989" />
+<img width="1894" height="898" alt="Negocio" src="https://github.com/user-attachments/assets/8f8766f9-1689-4502-801e-e715976abe6e" />
+<img width="1879" height="894" alt="Publicacion" src="https://github.com/user-attachments/assets/1552fe47-8fa2-4c8e-a5b5-367c712669bd" />
 
 ---
 
