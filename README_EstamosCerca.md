@@ -20,11 +20,11 @@
 
 <img width="1879" height="894" alt="Publicacion" src="https://github.com/user-attachments/assets/1552fe47-8fa2-4c8e-a5b5-367c712669bd" />
 
-<img width="575" height="1280" alt="MovileApp1" src="https://github.com/user-attachments/assets/3e6b91e5-e971-45d7-baf7-cf74bea421f2" />
+<img width="575" height="1280" alt="MobileApp1" src="https://github.com/user-attachments/assets/3e6b91e5-e971-45d7-baf7-cf74bea421f2" />
 
-<img width="575" height="1280" alt="MovileApp" src="https://github.com/user-attachments/assets/732165b3-f132-4909-840a-f2a217f9ebdb" />
+<img width="575" height="1280" alt="MobileApp" src="https://github.com/user-attachments/assets/732165b3-f132-4909-840a-f2a217f9ebdb" />
 
-<img width="575" height="1280" alt="MovileApp2" src="https://github.com/user-attachments/assets/21a2f168-d71f-470f-b1ae-285f3ef4754c" />
+<img width="575" height="1280" alt="MobileApp2" src="https://github.com/user-attachments/assets/21a2f168-d71f-470f-b1ae-285f3ef4754c" />
 
 
 ---
