@@ -1,5 +1,21 @@
 import { supabase } from "./supabase";
 
+/** Manda una push notification al destinatario de un mensaje (fire & forget) */
+async function notifyRecipient(recipientId: string, senderName: string, text: string, convId: number) {
+  try {
+    await fetch("/api/push", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: recipientId,
+        title:  `Nuevo mensaje de ${senderName}`,
+        body:   text.length > 80 ? text.slice(0, 80) + "…" : text,
+        url:    `/mensajes?conv=${convId}`,
+      }),
+    });
+  } catch { /* silencioso — la notificación es best-effort */ }
+}
+
 export interface Conversation {
   id: number;
   productId: number | null;
@@ -150,6 +166,9 @@ export async function sendMessage(
   text: string,
   type: MessageType = "text",
   metadata?: Message["metadata"],
+  // Opcionales para push notification
+  recipientId?: string,
+  senderName?: string,
 ): Promise<Message> {
   const { data: msg, error } = await supabase
     .from("messages")
@@ -171,6 +190,11 @@ export async function sendMessage(
     .from("conversations")
     .update({ last_message: text.trim(), last_message_at: msg.created_at })
     .eq("id", conversationId);
+
+  // Push notification al destinatario (solo mensajes de texto normales)
+  if (recipientId && senderName && type === "text") {
+    notifyRecipient(recipientId, senderName, text.trim(), conversationId);
+  }
 
   return rowToMsg(msg);
 }

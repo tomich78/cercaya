@@ -52,9 +52,15 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        // Aplicar a todas las rutas
         source: "/(.*)",
         headers: securityHeaders,
+      },
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Service-Worker-Allowed", value: "/" },
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+        ],
       },
     ];
   },

@@ -714,7 +714,8 @@ export default function ChatPage({ params }: { params: Promise<{ id: string }> }
     scrollToBottom(true);
 
     try {
-      await sendMessage(conv.id, user.id, user.initials, tempText);
+      const recipientId = conv.buyerId === user.id ? conv.sellerId : conv.buyerId;
+      await sendMessage(conv.id, user.id, user.initials, tempText, "text", undefined, recipientId, user.name);
       await markConversationRead(conv.id, user.id);
       // El realtime se encarga de reemplazar el optimista con el mensaje real
     } catch {
