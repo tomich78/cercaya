@@ -91,6 +91,24 @@ a { text-decoration: none; color: inherit; }
   display: none;
 }
 
+/* ── PWA / safe area ────────────────────────────────────────── */
+/* Soporta el "home indicator" de iPhone y notch en modo standalone */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .mobile-bottom-nav {
+    padding-bottom: env(safe-area-inset-bottom);
+    /* Aumentar la altura real para incluir el safe area */
+    height: calc(60px + env(safe-area-inset-bottom));
+  }
+}
+
+/* Cuando corre como PWA standalone, la top nav necesita el safe area del notch */
+@media (display-mode: standalone) {
+  nav[style*="top: 0"] {
+    padding-top: env(safe-area-inset-top, 0px);
+    height: calc(52px + env(safe-area-inset-top, 0px));
+  }
+}
+
 /* ── Layout responsivo ──────────────────────────────────────── */
 
 /* Grilla de productos — 2 col en mobile, auto-fill en desktop */
@@ -103,6 +121,18 @@ a { text-decoration: none; color: inherit; }
   .product-grid {
     grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
     gap: 12px;
+  }
+}
+
+/* Grilla del directorio de negocios */
+.business-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 560px) {
+  .business-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   }
 }
 
@@ -249,14 +279,14 @@ a { text-decoration: none; color: inherit; }
     display: flex;
   }
 
-  /* Espaciado inferior para que el footer no quede detrás del bottom nav */
+  /* Espaciado inferior para que el footer no quede detrás del bottom nav + safe area */
   body {
-    padding-bottom: 80px;
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
   }
 
-  /* Toast sube sobre el bottom nav */
+  /* Toast sube sobre el bottom nav + safe area */
   .toast-stack {
-    bottom: 80px;
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px));
     width: calc(100% - 2rem);
   }
   .toast {

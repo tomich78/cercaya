@@ -105,6 +105,53 @@ export async function getLocalProducts(options?: { includeSold?: boolean; includ
   });
 }
 
+// ── Negocios ──────────────────────────────────────────────────
+
+export interface LocalBusiness {
+  id: string;                    // = profiles.id (user_id del dueño)
+  businessName: string;
+  businessSlug: string;
+  businessCategory?: string;
+  businessDesc?: string;
+  location?: string;
+  avatarUrl?: string;
+  coverUrl?: string;
+  cuitVerified: boolean;
+  productCount: number;          // publicaciones activas
+}
+
+/**
+ * Trae todos los negocios activos (is_business + business_paid) junto con
+ * la cantidad de publicaciones activas de cada uno, en una sola query.
+ */
+export async function getBusinesses(): Promise<LocalBusiness[]> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, business_name, business_slug, business_category, business_desc, location, avatar_url, business_cover_url, business_cuit_verified, products!user_id (id, sold)")
+    .eq("is_business", true)
+    .eq("business_paid", true)
+    .not("business_slug", "is", null);
+
+  if (error || !data) return [];
+
+  return data.map(row => {
+    const prods = (row.products as { sold?: boolean }[] | null) ?? [];
+    const productCount = prods.filter(p => !p.sold).length;
+    return {
+      id:               row.id as string,
+      businessName:     (row.business_name as string) || "Negocio",
+      businessSlug:     row.business_slug as string,
+      businessCategory: row.business_category as string | undefined,
+      businessDesc:     row.business_desc as string | undefined,
+      location:         row.location as string | undefined,
+      avatarUrl:        row.avatar_url as string | undefined,
+      coverUrl:         row.business_cover_url as string | undefined,
+      cuitVerified:     (row.business_cuit_verified as boolean) ?? false,
+      productCount,
+    };
+  }).sort((a, b) => b.productCount - a.productCount);
+}
+
 export async function getProductById(id: number): Promise<LocalProduct | null> {
   const { data } = await supabase
     .from("products")

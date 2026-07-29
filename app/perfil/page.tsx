@@ -10,6 +10,7 @@ import { getReviewsForSeller, type Review } from "../lib/reviews";
 import { useToast } from "../components/ToastProvider";
 import { usePageTitle } from "../lib/usePageTitle";
 import BotonPago from "../components/BotonPago";
+import ShareButton from "../components/ShareButton";
 import { PRECIOS, getPreciosDB } from "../lib/pagos";
 import { supabase } from "../lib/supabase";
 import ArgentinaAddressInput from "../components/ArgentinaAddressInput";
@@ -1101,11 +1102,22 @@ function BusinessSection({ user, onSaved }: { user: LocalUser; onSaved: () => vo
             </div>
           </div>
         </div>
-        {user.businessPaid && (
-          <button onClick={() => setStep(s => s === "form" ? "pricing" : "form")} style={actionBtn}>
-            {step === "form" ? "Ver planes" : "Editar datos"}
-          </button>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {user.businessPaid && user.businessSlug && (
+            <ShareButton
+              url={`/negocio/${user.businessSlug}`}
+              title={user.businessName ?? "Mi negocio"}
+              text={`Mirá ${user.businessName ?? "mi negocio"} en EstamosCerca`}
+              variant="icon"
+              label="Compartir mi negocio"
+            />
+          )}
+          {user.businessPaid && (
+            <button onClick={() => setStep(s => s === "form" ? "pricing" : "form")} style={actionBtn}>
+              {step === "form" ? "Ver planes" : "Editar datos"}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── STEP: pricing ── */}

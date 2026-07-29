@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import Navbar from "../../components/Navbar";
 import ProductCard from "../../components/ProductCard";
+import ShareButton from "../../components/ShareButton";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { supabase } from "../../lib/supabase";
 import { incrementProfileViews, type LocalProduct } from "../../lib/storage";
@@ -100,6 +101,7 @@ export default function NegocioPage() {
   const [products, setProducts] = useState<LocalProduct[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [search,   setSearch]   = useState("");
 
   usePageTitle(biz?.businessName ?? "Negocio");
 
@@ -180,8 +182,19 @@ export default function NegocioPage() {
 
   const biz_ = biz!;
   const initials = biz_.businessName.slice(0, 2).toUpperCase();
-  const pinnedProducts = products.filter(p => p.pinned);
-  const restProducts   = products.filter(p => !p.pinned);
+
+  // Filtro de búsqueda dentro del negocio (en memoria, sobre lo ya cargado)
+  const q = search.trim().toLowerCase();
+  const matched = q
+    ? products.filter(p =>
+        p.title.toLowerCase().includes(q) ||
+        p.description?.toLowerCase().includes(q) ||
+        p.category?.toLowerCase().includes(q))
+    : products;
+
+  const searching     = q.length > 0;
+  const pinnedProducts = searching ? [] : matched.filter(p => p.pinned);
+  const restProducts   = searching ? matched : matched.filter(p => !p.pinned);
 
   return (
     <div>
@@ -303,6 +316,12 @@ export default function NegocioPage() {
               >
                 Enviar mensaje
               </Link>
+              <ShareButton
+                url={`/negocio/${biz_.businessSlug}`}
+                title={biz_.businessName}
+                text={`Mirá ${biz_.businessName} en EstamosCerca`}
+                label="Compartir negocio"
+              />
               <div style={{ fontSize: 11, color: "var(--text-3)", textAlign: "center" }}>
                 {products.length} producto{products.length !== 1 ? "s" : ""} activo{products.length !== 1 ? "s" : ""}
               </div>
@@ -324,6 +343,28 @@ export default function NegocioPage() {
             </div>
           )}
         </div>
+
+        {/* ── Buscador dentro del negocio ── */}
+        {products.length >= 4 && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8,
+            background: "var(--surface)", border: "1px solid var(--border)",
+            borderRadius: 8, padding: "8px 13px", marginBottom: 20,
+          }}>
+            <svg width="14" height="14" viewBox="0 0 15 15" fill="none" style={{ flexShrink: 0 }}>
+              <path d="M10 6.5C10 8.43 8.43 10 6.5 10C4.57 10 3 8.43 3 6.5C3 4.57 4.57 3 6.5 3C8.43 3 10 4.57 10 6.5ZM9.3 10.01C8.54 10.64 7.56 11 6.5 11C4.02 11 2 8.98 2 6.5C2 4.02 4.02 2 6.5 2C8.98 2 11 4.02 11 6.5C11 7.56 10.64 8.54 10.01 9.3L12.85 12.15C13.05 12.34 13.05 12.66 12.85 12.85C12.66 13.05 12.34 13.05 12.15 12.85L9.3 10.01Z" fill="#aaa" fillRule="evenodd" clipRule="evenodd" />
+            </svg>
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder={`Buscar en ${biz_.businessName}…`}
+              style={{ border: "none", outline: "none", fontSize: 13, flex: 1, background: "transparent", color: "var(--text)" }}
+            />
+            {search && (
+              <button onClick={() => setSearch("")} style={{ background: "none", border: "none", cursor: "pointer", color: "#aaa", fontSize: 16, padding: 0, lineHeight: 1 }}>×</button>
+            )}
+          </div>
+        )}
 
         {/* ── Productos fijados ── */}
         {pinnedProducts.length > 0 && (
@@ -350,9 +391,9 @@ export default function NegocioPage() {
         {/* ── Todas las publicaciones ── */}
         <div>
           <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: -0.2, marginBottom: 16 }}>
-            {pinnedProducts.length > 0 ? "Más publicaciones" : "Publicaciones activas"}
+            {searching ? "Resultados" : pinnedProducts.length > 0 ? "Más publicaciones" : "Publicaciones activas"}
             <span style={{ fontSize: 12, fontWeight: 400, color: "var(--text-3)", marginLeft: 6 }}>
-              ({products.length})
+              ({searching ? matched.length : products.length})
             </span>
           </div>
 
@@ -363,6 +404,14 @@ export default function NegocioPage() {
               color: "var(--text-3)", fontSize: 14,
             }}>
               Este negocio no tiene publicaciones activas por el momento.
+            </div>
+          ) : searching && matched.length === 0 ? (
+            <div style={{
+              background: "var(--surface)", border: "1px solid var(--border)",
+              borderRadius: 8, padding: "3rem", textAlign: "center",
+              color: "var(--text-3)", fontSize: 14,
+            }}>
+              No encontramos productos que coincidan con &quot;{search.trim()}&quot;.
             </div>
           ) : restProducts.length === 0 ? null : (
             <div className="product-grid">

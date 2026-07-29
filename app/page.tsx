@@ -9,7 +9,7 @@ import ProductCard from "./components/ProductCard";
 import ProductCardSkeleton from "./components/ProductCardSkeleton";
 import AdSlot from "./components/AdSlot";
 import { LISTING_TYPES, PRODUCT_CATEGORIES, SERVICE_CATEGORIES, PROPERTY_TYPES, VEHICLE_TYPES, type ListingType } from "./data";
-import { getLocalProducts, type LocalProduct } from "./lib/storage";
+import { getLocalProducts, getBusinesses, type LocalProduct, type LocalBusiness } from "./lib/storage";
 import { getCurrentUser, type LocalUser } from "./lib/auth";
 import { getFavorites } from "./lib/favorites";
 import { haversineKm, formatDistance } from "./lib/geo";
@@ -34,6 +34,7 @@ function HomeInner() {
   const [search,         setSearch]         = useState(initialQuery);
   usePageTitle(search ? `"${search}" — Búsqueda` : undefined);
   const [localProducts,  setLocalProducts]  = useState<LocalProduct[] | null>(null);
+  const [businesses,     setBusinesses]     = useState<LocalBusiness[]>([]);
   const [currentUser,    setCurrentUser]    = useState<LocalUser | null>(null);
   const [favIds,         setFavIds]         = useState<Set<number>>(new Set());
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -105,6 +106,7 @@ function HomeInner() {
 
   useEffect(() => {
     getLocalProducts().then(setLocalProducts);
+    getBusinesses().then(setBusinesses);
     getCurrentUser().then(u => {
       setCurrentUser(u);
       if (u?.lat && u?.lng) { setUserLat(u.lat); setUserLng(u.lng); }
@@ -202,15 +204,26 @@ function HomeInner() {
     maxDist   !== "todos",
   ].filter(Boolean).length;
 
+  // Negocios que coinciden con la búsqueda (por nombre, rubro, descripción o zona)
+  const q = search.trim().toLowerCase();
+  const matchedBusinesses = q
+    ? businesses.filter(b =>
+        b.businessName.toLowerCase().includes(q)
+        || b.businessCategory?.toLowerCase().includes(q)
+        || b.businessDesc?.toLowerCase().includes(q)
+        || b.location?.toLowerCase().includes(q))
+    : [];
+  const matchedBizIds = new Set(matchedBusinesses.map(b => b.id));
+
   const filtered = allProducts
     .filter(p => {
       const matchType   = activeType === "all" || (p.listingType ?? "product") === activeType;
       const matchCat    = activeCategory === "Todos" || p.category === activeCategory;
-      const q           = search.toLowerCase();
       const matchSearch = !q || p.title.toLowerCase().includes(q)
         || p.description?.toLowerCase().includes(q)
         || p.category.toLowerCase().includes(q)
-        || p.location.toLowerCase().includes(q);
+        || p.location.toLowerCase().includes(q)
+        || (!!p.userId && matchedBizIds.has(p.userId));  // productos de un negocio que matchea
       const price       = parsePrice(p.price);
       const matchMin    = !priceMin || price >= parseInt(priceMin.replace(/\D/g, ""));
       const matchMax    = !priceMax || price <= parseInt(priceMax.replace(/\D/g, ""));
@@ -433,6 +446,21 @@ function HomeInner() {
               {t.label}s
             </button>
           ))}
+          {/* Entrada al directorio de negocios (útil sobre todo en mobile) */}
+          <Link
+            href="/negocios"
+            style={{
+              padding: "6px 14px", borderRadius: 999,
+              border: "1px dashed var(--green)",
+              background: "var(--surface)",
+              color: "var(--green)",
+              fontWeight: 600, fontSize: 13,
+              display: "inline-flex", alignItems: "center", gap: 5,
+              textDecoration: "none",
+            }}
+          >
+            <span>🏪</span> Negocios
+          </Link>
         </div>
 
         {/* Categorías — dinámicas según el tipo */}
@@ -756,6 +784,61 @@ function HomeInner() {
             </div>
           );
         })()}
+
+        {/* Tira de negocios que coinciden con la búsqueda */}
+        {search.trim() && matchedBusinesses.length > 0 && (
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: -0.3, display: "flex", alignItems: "center", gap: 6 }}>
+                🏪 Negocios
+                <span style={{ fontSize: 11, fontWeight: 400, color: "var(--text-3)" }}>
+                  ({matchedBusinesses.length})
+                </span>
+              </div>
+              <Link href={`/negocios?q=${encodeURIComponent(search.trim())}`} style={{ fontSize: 12, color: "var(--green)", fontWeight: 600 }}>
+                Ver todos →
+              </Link>
+            </div>
+            <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, scrollbarWidth: "none" as const }}>
+              {matchedBusinesses.slice(0, 8).map(b => (
+                <Link
+                  key={b.id}
+                  href={`/negocio/${b.businessSlug}`}
+                  style={{
+                    flexShrink: 0, display: "flex", alignItems: "center", gap: 9,
+                    background: "var(--surface)", border: "1px solid var(--border)",
+                    borderRadius: 999, padding: "6px 14px 6px 6px", textDecoration: "none",
+                    transition: "border-color 0.12s",
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.borderColor = "var(--green)")}
+                  onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--border)")}
+                >
+                  <div style={{
+                    width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
+                    background: "var(--green-subtle)", overflow: "hidden",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    {b.avatarUrl ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={b.avatarUrl} alt={b.businessName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <span style={{ fontSize: 12, fontWeight: 800, color: "var(--green)" }}>{b.businessName.slice(0, 2).toUpperCase()}</span>
+                    )}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}>
+                      {b.businessName}
+                      {b.cuitVerified && <span style={{ color: "var(--green)" }}>✓</span>}
+                    </div>
+                    <div style={{ fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>
+                      {b.productCount} publicación{b.productCount !== 1 ? "es" : ""}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Results header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>

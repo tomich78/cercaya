@@ -1,16 +1,34 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser, logout, type LocalUser } from "../lib/auth";
 import { getUnreadCount } from "../lib/messages";
 import { supabase } from "../lib/supabase";
 import { useTheme } from "./ThemeProvider";
+import { usePushNotifications } from "../lib/usePushNotifications";
 
 export default function Navbar() {
-  const router = useRouter();
+  const router   = useRouter();
+  const pathname = usePathname();
   const { theme, toggle } = useTheme();
+
+
+  // Helpers para el bottom nav
+  function isActive(href: string) {
+    if (href === "/") return pathname === "/";
+    return pathname.startsWith(href);
+  }
+  function navColor(href: string) {
+    return isActive(href) ? "var(--green)" : "var(--text-3)";
+  }
+  function navWeight(href: string): number {
+    return isActive(href) ? 700 : 500;
+  }
   const [user, setUser]     = useState<LocalUser | null>(null);
+
+  // Pedir permiso de notificaciones push cuando el usuario está logueado
+  usePushNotifications(user?.id ?? null);
   const [open, setOpen]     = useState(false);
   const [unread, setUnread] = useState(0);
   const dropdownRef         = useRef<HTMLDivElement>(null);
@@ -84,6 +102,14 @@ export default function Navbar() {
       </Link>
 
       <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <Link href="/negocios" className="hide-mobile" style={{
+          fontSize: 13, fontWeight: 500,
+          color: "var(--text-2)",
+          padding: "6px 4px",
+          display: "inline-flex", alignItems: "center", gap: 4,
+        }}>
+          🏪 Negocios
+        </Link>
         {user && (
           <Link href="/guardados" className="hide-mobile" style={{
             fontSize: 13, fontWeight: 500,
@@ -316,7 +342,7 @@ export default function Navbar() {
       {/* Inicio */}
       <Link href="/" style={{
         display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-        color: "var(--text-2)", fontSize: 10, fontWeight: 500, padding: "6px 12px",
+        color: navColor("/"), fontSize: 10, fontWeight: navWeight("/"), padding: "6px 12px",
       }}>
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
@@ -328,7 +354,7 @@ export default function Navbar() {
       {/* Mensajes */}
       <Link href={user ? "/mensajes" : "/login?redirect=/mensajes"} style={{
         display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-        color: "var(--text-2)", fontSize: 10, fontWeight: 500, padding: "6px 12px",
+        color: navColor("/mensajes"), fontSize: 10, fontWeight: navWeight("/mensajes"), padding: "6px 12px",
         position: "relative",
       }}>
         <span style={{ position: "relative", display: "inline-flex" }}>
@@ -375,7 +401,7 @@ export default function Navbar() {
       {/* Guardados */}
       <Link href={user ? "/guardados" : "/login?redirect=/guardados"} style={{
         display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-        color: "var(--text-2)", fontSize: 10, fontWeight: 500, padding: "6px 12px",
+        color: navColor("/guardados"), fontSize: 10, fontWeight: navWeight("/guardados"), padding: "6px 12px",
       }}>
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
@@ -386,7 +412,7 @@ export default function Navbar() {
       {/* Perfil */}
       <Link href={user ? "/perfil" : "/login"} style={{
         display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-        color: "var(--text-2)", fontSize: 10, fontWeight: 500, padding: "6px 12px",
+        color: navColor("/perfil"), fontSize: 10, fontWeight: navWeight("/perfil"), padding: "6px 12px",
       }}>
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
