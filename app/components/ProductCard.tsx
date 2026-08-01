@@ -72,19 +72,21 @@ export default function ProductCard({ product, userId, favIds }: ProductCardProp
         borderRadius: 8,
         overflow: "hidden",
         cursor: "pointer",
-        transition: "border-color 0.12s, box-shadow 0.12s",
+        transition: "border-color 0.12s, box-shadow 0.15s, transform 0.15s",
         position: "relative",
-        boxShadow: product.featured ? "0 0 0 1px #fde68a" : "none",
+        boxShadow: product.featured ? "0 0 0 1px #fde68a, var(--shadow-sm)" : "var(--shadow-sm)",
       }}
       onMouseEnter={e => {
         const el = e.currentTarget as HTMLDivElement;
-        el.style.borderColor = product.featured ? "#d97706" : "#bfbfbb";
-        if (!product.featured) el.style.boxShadow = "none";
+        el.style.borderColor = product.featured ? "#d97706" : "#d8d0bf";
+        el.style.boxShadow   = product.featured ? "0 0 0 1px #fde68a, var(--shadow-md)" : "var(--shadow-md)";
+        el.style.transform   = "translateY(-2px)";
       }}
       onMouseLeave={e => {
         const el = e.currentTarget as HTMLDivElement;
         el.style.borderColor = product.featured ? "#f59e0b" : "var(--border)";
-        el.style.boxShadow   = product.featured ? "0 0 0 1px #fde68a" : "none";
+        el.style.boxShadow   = product.featured ? "0 0 0 1px #fde68a, var(--shadow-sm)" : "var(--shadow-sm)";
+        el.style.transform   = "translateY(0)";
       }}
     >
         {/* Ribbon destacado */}

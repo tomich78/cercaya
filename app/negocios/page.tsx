@@ -14,10 +14,11 @@ function BusinessCard({ biz }: { biz: LocalBusiness }) {
       style={{
         display: "block", textDecoration: "none",
         background: "var(--surface)", border: "1px solid var(--border)",
-        borderRadius: 10, overflow: "hidden", transition: "border-color 0.12s, box-shadow 0.12s",
+        borderRadius: 10, overflow: "hidden", boxShadow: "var(--shadow-sm)",
+        transition: "border-color 0.12s, box-shadow 0.15s, transform 0.15s",
       }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--green)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--green-subtle)"; }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "none"; }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--green)"; e.currentTarget.style.boxShadow = "0 0 0 3px var(--green-subtle), var(--shadow-md)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "var(--shadow-sm)"; e.currentTarget.style.transform = "translateY(0)"; }}
     >
       {/* Portada */}
       <div style={{ height: 76, background: biz.coverUrl ? "transparent" : "var(--green-subtle)", overflow: "hidden" }}>

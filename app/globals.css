@@ -2,12 +2,15 @@
 
 /* ── Modo claro (default) ───────────────────────────────────── */
 :root {
-  --bg:             #f5f5f3;
-  --surface:        #ffffff;
-  --border:         #e8e8e6;
-  --text:           #111111;
-  --text-2:         #666666;
-  --text-3:         #9b9b9b;
+  --bg:             #f3efe7;
+  --surface:        #fffefa;
+  --border:         #e7e1d5;
+  --text:           #17140f;
+  --text-2:         #6a655e;
+  --text-3:         #9b958a;
+  /* Sombras cálidas para dar profundidad a las tarjetas */
+  --shadow-sm:      0 1px 2px rgba(60, 45, 20, 0.04), 0 2px 6px rgba(60, 45, 20, 0.05);
+  --shadow-md:      0 4px 14px rgba(60, 45, 20, 0.10);
   --green:          #0F6E56;
   --green-subtle:   #eef7f3;
   --green-bg:       #f0fdf4;
@@ -35,6 +38,8 @@
     --text:           #efefed;
     --text-2:         #a0a09e;
     --text-3:         #636361;
+    --shadow-sm:      0 1px 3px rgba(0, 0, 0, 0.35);
+    --shadow-md:      0 6px 18px rgba(0, 0, 0, 0.5);
     --green:          #1aab82;
     --green-subtle:   #0d2922;
     --green-bg:       #0d2922;
@@ -59,6 +64,8 @@
   --text:           #efefed;
   --text-2:         #a0a09e;
   --text-3:         #636361;
+  --shadow-sm:      0 1px 3px rgba(0, 0, 0, 0.35);
+  --shadow-md:      0 6px 18px rgba(0, 0, 0, 0.5);
   --green:          #1aab82;
   --green-subtle:   #0d2922;
   --green-bg:       #0d2922;
@@ -122,6 +129,95 @@ a { text-decoration: none; color: inherit; }
     grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
     gap: 12px;
   }
+}
+
+/* Layout del feed: sidebar de filtros + grilla de productos */
+.feed-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+.feed-sidebar, .feed-main { min-width: 0; }
+
+/* Secciones de la sidebar */
+.sidebar-section { margin-bottom: 18px; }
+.sidebar-title {
+  font-size: 11px; font-weight: 700; color: var(--text-3);
+  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 9px;
+}
+
+/* Botón "Filtros y categorías" — solo mobile */
+.filters-toggle { display: none; }
+
+@media (min-width: 900px) {
+  .feed-layout {
+    grid-template-columns: 240px 1fr;
+    gap: 26px;
+    align-items: start;
+  }
+  .feed-sidebar {
+    position: sticky;
+    top: 66px;                        /* debajo del navbar sticky */
+    max-height: calc(100vh - 84px);
+    overflow-y: auto;
+    padding-right: 6px;
+  }
+  /* scrollbar fino en la sidebar */
+  .feed-sidebar::-webkit-scrollbar { width: 6px; }
+  .feed-sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+}
+
+/* ── Mobile: la sidebar se despliega con un botón ── */
+@media (max-width: 899px) {
+  .filters-toggle {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%;
+    padding: 11px; border-radius: 9px;
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--text-2); font-size: 14px; font-weight: 600;
+    cursor: pointer; margin-bottom: 14px;
+    box-shadow: var(--shadow-sm);
+  }
+  .filters-toggle.active { border-color: var(--green); color: var(--green); background: var(--green-subtle); }
+  .feed-sidebar { display: none; }
+  .feed-sidebar.open {
+    display: block;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 16px 4px;
+    margin-bottom: 8px;
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+/* Botón "subir al inicio" */
+.scroll-top-btn {
+  position: fixed;
+  right: 20px;
+  bottom: 22px;
+  z-index: 95;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s;
+  animation: scroll-top-in 0.2s ease-out;
+}
+.scroll-top-btn:hover { transform: translateY(-2px); }
+@keyframes scroll-top-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 767px) {
+  .scroll-top-btn { bottom: 74px; }   /* por encima de la bottom-nav mobile */
 }
 
 /* Grilla del directorio de negocios */

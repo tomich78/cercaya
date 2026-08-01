@@ -43,8 +43,11 @@ function HomeInner() {
   const [alertSaved,     setAlertSaved]     = useState(false);  // feedback "¡guardado!"
   const [alertChecked,   setAlertChecked]   = useState<string>("");  // query ya verificada
 
-  // Filtros
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  // Botón "subir al inicio"
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  // Sidebar de filtros (en mobile se despliega con un botón)
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [priceMin,    setPriceMin]    = useState("");
   const [priceMax,    setPriceMax]    = useState("");
   const [condition,   setCondition]   = useState<Condition>("Todos");
@@ -91,6 +94,13 @@ function HomeInner() {
   useEffect(() => {
     setRecentSearches(getRecentSearches());
     setViewedCats(getViewedCategories());
+  }, []);
+
+  // Mostrar botón "subir al inicio" al bajar
+  useEffect(() => {
+    const onScroll = () => setShowScrollTop(window.scrollY > 500);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   // Guardar búsqueda con debounce de 1.5s cuando hay al menos 2 caracteres
@@ -411,82 +421,7 @@ function HomeInner() {
           </div>
         )}
 
-        {/* Tipo de publicación — tabs */}
-        <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
-          <button
-            onClick={() => { setActiveType("all"); setActiveCategory("Todos"); }}
-            style={{
-              padding: "6px 14px", borderRadius: 999,
-              border: "1px solid",
-              borderColor: activeType === "all" ? "var(--green)" : "var(--border)",
-              background:  activeType === "all" ? "var(--green)" : "var(--surface)",
-              color:       activeType === "all" ? "#fff" : "var(--text-2)",
-              fontWeight:  activeType === "all" ? 700 : 400,
-              fontSize: 13, cursor: "pointer", transition: "all 0.12s",
-            }}
-          >
-            Todos
-          </button>
-          {LISTING_TYPES.map(t => (
-            <button
-              key={t.value}
-              onClick={() => { setActiveType(t.value); setActiveCategory("Todos"); }}
-              style={{
-                padding: "6px 14px", borderRadius: 999,
-                border: "1px solid",
-                borderColor: activeType === t.value ? "var(--green)" : "var(--border)",
-                background:  activeType === t.value ? "var(--green)" : "var(--surface)",
-                color:       activeType === t.value ? "#fff" : "var(--text-2)",
-                fontWeight:  activeType === t.value ? 700 : 400,
-                fontSize: 13, cursor: "pointer", transition: "all 0.12s",
-                display: "flex", alignItems: "center", gap: 5,
-              }}
-            >
-              <span>{t.emoji}</span>
-              {t.label}s
-            </button>
-          ))}
-          {/* Entrada al directorio de negocios (útil sobre todo en mobile) */}
-          <Link
-            href="/negocios"
-            style={{
-              padding: "6px 14px", borderRadius: 999,
-              border: "1px dashed var(--green)",
-              background: "var(--surface)",
-              color: "var(--green)",
-              fontWeight: 600, fontSize: 13,
-              display: "inline-flex", alignItems: "center", gap: 5,
-              textDecoration: "none",
-            }}
-          >
-            <span>🏪</span> Negocios
-          </Link>
-        </div>
-
-        {/* Categorías — dinámicas según el tipo */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 6px", marginBottom: 12 }}>
-          {activeCategories.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              style={{
-                padding: "4px 11px",
-                borderRadius: 999,
-                border: "none",
-                background:  activeCategory === cat ? "var(--green)" : "transparent",
-                color:       activeCategory === cat ? "#fff" : "var(--text-3)",
-                fontWeight:  activeCategory === cat ? 600 : 400,
-                fontSize: 12,
-                cursor: "pointer",
-                transition: "all 0.12s",
-              }}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        {/* Onboarding banner — primer uso */}
+        {/* Onboarding banner — primer uso (full width, arriba del layout) */}
         {showOnboarding && (
           <div style={{
             background: "var(--surface)",
@@ -495,6 +430,7 @@ function HomeInner() {
             padding: "20px 20px 18px",
             marginBottom: 16,
             position: "relative",
+            boxShadow: "var(--shadow-sm)",
             animation: "onboarding-in 0.3s ease-out both",
           }}>
             <style>{`
@@ -578,164 +514,219 @@ function HomeInner() {
           </div>
         )}
 
-        {/* Barra de filtros */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+        {/* Botón para desplegar filtros — solo mobile */}
+        <button
+          className={"filters-toggle" + (activeFilterCount > 0 ? " active" : "")}
+          onClick={() => setSidebarOpen(o => !o)}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
+          </svg>
+          {sidebarOpen ? "Ocultar filtros" : "Filtros y categorías"}
+          {activeFilterCount > 0 && (
+            <span style={{
+              background: "var(--green)", color: "#fff",
+              borderRadius: "50%", width: 18, height: 18,
+              fontSize: 11, fontWeight: 700,
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+            }}>
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
 
-          {/* Botón Filtros */}
-          <button
-            onClick={() => setFiltersOpen(o => !o)}
-            style={{
-              display: "flex", alignItems: "center", gap: 6, flexShrink: 0,
-              padding: "6px 12px", borderRadius: 6, border: "1px solid",
-              borderColor: activeFilterCount > 0 ? "var(--green)" : "var(--border)",
-              background:  activeFilterCount > 0 ? "var(--green-subtle)" : "var(--surface)",
-              color:       activeFilterCount > 0 ? "var(--green)" : "var(--text-2)",
-              fontSize: 13, fontWeight: activeFilterCount > 0 ? 600 : 400,
-              cursor: "pointer", transition: "all 0.12s",
-            }}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
-            </svg>
-            Filtros
-            {activeFilterCount > 0 && (
-              <span style={{
-                background: "var(--green)", color: "#fff",
-                borderRadius: "50%", width: 16, height: 16,
-                fontSize: 10, fontWeight: 700,
-                display: "inline-flex", alignItems: "center", justifyContent: "center",
-              }}>
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
+        {/* ── Layout: sidebar de filtros (izq) + grilla (der) ── */}
+        <div className="feed-layout">
+          <aside className={"feed-sidebar" + (sidebarOpen ? " open" : "")}>
 
-          {/* Sort pills — scroll horizontal en mobile */}
-          <div style={{ display: "flex", gap: 4, overflowX: "auto", flex: 1, paddingBottom: 2, scrollbarWidth: "none" }}>
-            {(Object.entries(sortLabels) as [SortOption, string][]).map(([key, label]) => (
-              <button
-                key={key}
-                onClick={() => setSortBy(key)}
-                style={{
-                  padding: "5px 11px", borderRadius: 6, border: "1px solid",
-                  borderColor: sortBy === key ? "var(--green)" : "var(--border)",
-                  background:  sortBy === key ? "var(--green-subtle)" : "var(--surface)",
-                  color:       sortBy === key ? "var(--green)" : "var(--text-2)",
-                  fontWeight:  sortBy === key ? 600 : 400,
-                  fontSize: 12, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
-                }}
-              >
-                {label}
-              </button>
-            ))}
+        {/* ── Tipo ── */}
+        <div className="sidebar-section">
+          <div className="sidebar-title">Tipo</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {[{ value: "all" as const, label: "Todos", emoji: "🧭" },
+              ...LISTING_TYPES.map(t => ({ value: t.value, label: `${t.label}s`, emoji: t.emoji }))
+            ].map(item => {
+              const active = activeType === item.value;
+              return (
+                <button
+                  key={item.value}
+                  onClick={() => { setActiveType(item.value as "all" | ListingType); setActiveCategory("Todos"); }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 9, width: "100%", textAlign: "left",
+                    padding: "8px 12px", borderRadius: 8, border: "1px solid",
+                    borderColor: active ? "var(--green)" : "var(--border)",
+                    background:  active ? "var(--green-subtle)" : "var(--surface)",
+                    color:       active ? "var(--green)" : "var(--text-2)",
+                    fontWeight:  active ? 700 : 500, fontSize: 13, cursor: "pointer", transition: "all 0.12s",
+                  }}
+                >
+                  <span style={{ fontSize: 15 }}>{item.emoji}</span>
+                  {item.label}
+                </button>
+              );
+            })}
+            <Link
+              href="/negocios"
+              style={{
+                display: "flex", alignItems: "center", gap: 9, width: "100%",
+                padding: "8px 12px", borderRadius: 8,
+                border: "1px dashed var(--green)", background: "var(--surface)",
+                color: "var(--green)", fontWeight: 600, fontSize: 13, textDecoration: "none",
+              }}
+            >
+              <span style={{ fontSize: 15 }}>🏪</span> Ver negocios
+            </Link>
           </div>
         </div>
 
-        {/* Panel de filtros desplegable */}
-        {filtersOpen && (
-          <div style={{
-            background: "var(--surface)", border: "1px solid var(--border)",
-            borderRadius: 8, padding: "16px 18px", marginBottom: 14,
-            display: "flex", flexWrap: "wrap", gap: 20, alignItems: "flex-end",
-          }}>
-
-            {/* Precio */}
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-3)", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.3 }}>
-                Precio
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <input
-                  value={priceMin}
-                  onChange={e => setPriceMin(e.target.value.replace(/\D/g, ""))}
-                  placeholder="Mínimo"
-                  inputMode="numeric"
+        {/* ── Categorías ── */}
+        <div className="sidebar-section">
+          <div className="sidebar-title">Categorías</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 6px" }}>
+            {activeCategories.map(cat => {
+              const active = activeCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
                   style={{
-                    width: 110, padding: "7px 10px", borderRadius: 6,
-                    border: "1px solid var(--border)", fontSize: 13,
-                    color: "var(--text)", background: "var(--bg)",
-                    outline: "none", fontFamily: "inherit",
+                    padding: "5px 11px", borderRadius: 999, border: "1px solid",
+                    borderColor: active ? "var(--green)" : "var(--border)",
+                    background:  active ? "var(--green)" : "var(--surface)",
+                    color:       active ? "#fff" : "var(--text-2)",
+                    fontWeight:  active ? 600 : 400,
+                    fontSize: 12, cursor: "pointer", transition: "all 0.12s",
                   }}
-                />
-                <span style={{ fontSize: 12, color: "var(--text-3)" }}>—</span>
-                <input
-                  value={priceMax}
-                  onChange={e => setPriceMax(e.target.value.replace(/\D/g, ""))}
-                  placeholder="Máximo"
-                  inputMode="numeric"
-                  style={{
-                    width: 110, padding: "7px 10px", borderRadius: 6,
-                    border: "1px solid var(--border)", fontSize: 13,
-                    color: "var(--text)", background: "var(--bg)",
-                    outline: "none", fontFamily: "inherit",
-                  }}
-                />
-              </div>
-            </div>
+                >
+                  {cat}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
-            {/* Condición */}
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-3)", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.3 }}>
-                Condición
-              </div>
-              <div style={{ display: "flex", gap: 6 }}>
-                {(["Todos", "Nuevo", "Usado"] as Condition[]).map(c => (
+        {/* ── Ordenar ── */}
+        <div className="sidebar-section">
+          <div className="sidebar-title">Ordenar por</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            {(Object.entries(sortLabels) as [SortOption, string][]).map(([key, label]) => {
+              const active = sortBy === key;
+              return (
+                <button
+                  key={key}
+                  onClick={() => setSortBy(key)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left",
+                    padding: "7px 12px", borderRadius: 8, border: "1px solid",
+                    borderColor: active ? "var(--green)" : "var(--border)",
+                    background:  active ? "var(--green-subtle)" : "var(--surface)",
+                    color:       active ? "var(--green)" : "var(--text-2)",
+                    fontWeight:  active ? 600 : 400, fontSize: 13, cursor: "pointer", transition: "all 0.12s",
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Precio ── */}
+        <div className="sidebar-section">
+          <div className="sidebar-title">Precio</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input
+              value={priceMin}
+              onChange={e => setPriceMin(e.target.value.replace(/\D/g, ""))}
+              placeholder="Mín."
+              inputMode="numeric"
+              style={{
+                flex: 1, minWidth: 0, padding: "8px 10px", borderRadius: 6,
+                border: "1px solid var(--border)", fontSize: 13,
+                color: "var(--text)", background: "var(--bg)", outline: "none", fontFamily: "inherit",
+              }}
+            />
+            <span style={{ fontSize: 12, color: "var(--text-3)" }}>—</span>
+            <input
+              value={priceMax}
+              onChange={e => setPriceMax(e.target.value.replace(/\D/g, ""))}
+              placeholder="Máx."
+              inputMode="numeric"
+              style={{
+                flex: 1, minWidth: 0, padding: "8px 10px", borderRadius: 6,
+                border: "1px solid var(--border)", fontSize: 13,
+                color: "var(--text)", background: "var(--bg)", outline: "none", fontFamily: "inherit",
+              }}
+            />
+          </div>
+        </div>
+
+        {/* ── Condición ── */}
+        <div className="sidebar-section">
+          <div className="sidebar-title">Condición</div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {(["Todos", "Nuevo", "Usado"] as Condition[]).map(c => {
+              const active = condition === c;
+              return (
+                <button
+                  key={c}
+                  onClick={() => setCondition(c)}
+                  style={{
+                    padding: "6px 13px", borderRadius: 6, border: "1px solid",
+                    borderColor: active ? "var(--green)" : "var(--border)",
+                    background:  active ? "var(--green-subtle)" : "var(--bg)",
+                    color:       active ? "var(--green)" : "var(--text-2)",
+                    fontWeight:  active ? 600 : 400, fontSize: 13, cursor: "pointer",
+                  }}
+                >{c}</button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Distancia ── */}
+        {hasUserLocation && (
+          <div className="sidebar-section">
+            <div className="sidebar-title">Distancia</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {(["todos", "5", "10", "25", "50"] as MaxDist[]).map(d => {
+                const active = maxDist === d;
+                return (
                   <button
-                    key={c}
-                    onClick={() => setCondition(c)}
+                    key={d}
+                    onClick={() => setMaxDist(d)}
                     style={{
-                      padding: "6px 14px", borderRadius: 6, border: "1px solid",
-                      borderColor: condition === c ? "var(--green)" : "var(--border)",
-                      background:  condition === c ? "var(--green-subtle)" : "var(--bg)",
-                      color:       condition === c ? "var(--green)" : "var(--text-2)",
-                      fontWeight:  condition === c ? 600 : 400,
-                      fontSize: 13, cursor: "pointer",
+                      padding: "6px 13px", borderRadius: 6, border: "1px solid",
+                      borderColor: active ? "var(--green)" : "var(--border)",
+                      background:  active ? "var(--green-subtle)" : "var(--bg)",
+                      color:       active ? "var(--green)" : "var(--text-2)",
+                      fontWeight:  active ? 600 : 400, fontSize: 13, cursor: "pointer",
                     }}
-                  >{c}</button>
-                ))}
-              </div>
+                  >{d === "todos" ? "Todos" : `${d} km`}</button>
+                );
+              })}
             </div>
-
-            {/* Distancia */}
-            {hasUserLocation && (
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-3)", marginBottom: 8, textTransform: "uppercase" as const, letterSpacing: 0.3 }}>
-                  Distancia
-                </div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {(["todos", "5", "10", "25", "50"] as MaxDist[]).map(d => (
-                    <button
-                      key={d}
-                      onClick={() => setMaxDist(d)}
-                      style={{
-                        padding: "6px 14px", borderRadius: 6, border: "1px solid",
-                        borderColor: maxDist === d ? "var(--green)" : "var(--border)",
-                        background:  maxDist === d ? "var(--green-subtle)" : "var(--bg)",
-                        color:       maxDist === d ? "var(--green)" : "var(--text-2)",
-                        fontWeight:  maxDist === d ? 600 : 400,
-                        fontSize: 13, cursor: "pointer",
-                      }}
-                    >{d === "todos" ? "Todos" : `${d} km`}</button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Limpiar */}
-            {activeFilterCount > 0 && (
-              <button
-                onClick={clearFilters}
-                style={{
-                  padding: "6px 14px", borderRadius: 6, fontSize: 13,
-                  background: "none", border: "1px solid var(--border)",
-                  color: "var(--text-3)", cursor: "pointer",
-                }}
-              >
-                Limpiar filtros
-              </button>
-            )}
           </div>
         )}
+
+        {/* ── Limpiar ── */}
+        {activeFilterCount > 0 && (
+          <button
+            onClick={clearFilters}
+            style={{
+              width: "100%", padding: "9px 14px", borderRadius: 8, fontSize: 13, fontWeight: 500,
+              background: "none", border: "1px solid var(--border)",
+              color: "var(--text-2)", cursor: "pointer", marginBottom: 18,
+            }}
+          >
+            Limpiar filtros ({activeFilterCount})
+          </button>
+        )}
+
+          </aside>
+
+          {/* ── Columna principal: resultados ── */}
+          <main className="feed-main">
 
         {/* Para vos — productos de categorías que el usuario visitó */}
         {(() => {
@@ -951,7 +942,24 @@ function HomeInner() {
             · Ya viste todas las publicaciones ·
           </div>
         )}
+
+          </main>
+        </div>{/* /feed-layout */}
       </div>
+
+      {/* Botón subir al inicio */}
+      {showScrollTop && (
+        <button
+          className="scroll-top-btn"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          title="Subir al inicio"
+          aria-label="Subir al inicio"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
+          </svg>
+        </button>
+      )}
     </div>
   );
 }
